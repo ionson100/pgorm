@@ -10,7 +10,7 @@ def _inner_builder(h:HostItem,t:type):
     for key,value in h.columns.items():
         sql+=f'"{value.name_table}", '
     sql=sql.strip(' ').strip(',')+ ') VALUES ('
-    for key, value in h.columns.items():
+    for _, value in h.columns.items():
         sql+='(%s), '
     sql = sql.strip(' ').strip(',') + ') RETURNING '
 

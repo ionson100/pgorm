@@ -11,8 +11,9 @@ from .builderSelect import get_sql_select
 
 class Transaction:
     connection: psycopg2.extensions.connection | None = None
-    def __init__(self,con:psycopg2.extensions.connection):
-        self.connection=con
+
+    def __init__(self, con: psycopg2.extensions.connection):
+        self.connection = con
 
     def get_status_transaction(self) -> int:
         if self.connection is None:
@@ -25,7 +26,7 @@ class Transaction:
             raise Exception("Транcакция уже использована")
         else:
             self.connection.commit()
-            self.connection.autocommit=True
+            self.connection.autocommit = True
             self.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_DEFAULT)
             self.connection = None
 
@@ -51,7 +52,7 @@ def orm_int_connect(*, dbname: str, user: str = 'postgres', password: str = 'pos
                     port: int = 5432) -> psycopg2.extensions.connection:
     if _self_host.connect is None:
         _self_host.connect = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
-        _self_host.connect.autocommit=True;
+        _self_host.connect.autocommit = True
 
     return _self_host.connect
 
@@ -79,7 +80,6 @@ def orm_exist_table(cls: type) -> bool:
 
         cursor.execute(sql)
 
-
         for record in cursor:
             [d] = record
             return d
@@ -92,7 +92,7 @@ def orm_exist_table(cls: type) -> bool:
 
 def orm_begin_transaction(level: int | None = None) -> Transaction:
     t = Transaction(_self_host.connect)
-    t.connection.autocommit=False
+    t.connection.autocommit = False
     if level is not None:
         t.connection.set_isolation_level(level)
     return t
@@ -101,8 +101,9 @@ def orm_begin_transaction(level: int | None = None) -> Transaction:
 def orm_get_attribute(cls: type):
     return get_host_base().get_hist_type(cls)
 
+
 def orm_create_table(cls: type):
-    sql=_create_table(orm_get_attribute(cls))
+    sql = _create_table(orm_get_attribute(cls))
     cursor = _self_host.connect.cursor()
     try:
         print(sql)
@@ -114,8 +115,9 @@ def orm_create_table(cls: type):
     finally:
         cursor.close()
 
-def orm_truncate_table(cls:type):
-    sql=f'TRUNCATE TABLE "{orm_get_attribute(cls).table_name}"'
+
+def orm_truncate_table(cls: type):
+    sql = f'TRUNCATE TABLE "{orm_get_attribute(cls).table_name}"'
     cursor = _self_host.connect.cursor()
     try:
         print(sql)
@@ -126,8 +128,10 @@ def orm_truncate_table(cls:type):
         return 0
     finally:
         cursor.close()
-def orm_drop_table(cls:type):
-    sql=f'DROP TABLE "{orm_get_attribute(cls).table_name}"'
+
+
+def orm_drop_table(cls: type):
+    sql = f'DROP TABLE "{orm_get_attribute(cls).table_name}"'
     cursor = _self_host.connect.cursor()
     try:
         print(sql)
@@ -138,9 +142,10 @@ def orm_drop_table(cls:type):
         return 0
     finally:
         cursor.close()
+
 
 def orm_insert(ob: any):
-    host:HostItem = orm_get_attribute(type(ob))
+    host: HostItem = orm_get_attribute(type(ob))
     sql: tuple[Any | None, None] = get_sql_insert(ob, host)
     print(sql)
     cursor = _self_host.connect.cursor()
@@ -148,7 +153,7 @@ def orm_insert(ob: any):
         cursor.execute(sql[0], sql[1])
         for record in cursor:
             [d] = record
-            for key,value in host.columns.items():
+            for key, value in host.columns.items():
                 if value.isPk is True:
                     setattr(ob, value.name_property, d)
                     print(d)
@@ -158,8 +163,10 @@ def orm_insert(ob: any):
         return 0
     finally:
         cursor.close()
+
+
 def orm_update(ob: any):
-    host:HostItem = orm_get_attribute(type(ob))
+    host: HostItem = orm_get_attribute(type(ob))
     sql: tuple[Any | None, None] = get_sql_update(ob, host)
     print(sql)
     cursor = _self_host.connect.cursor()
@@ -171,12 +178,14 @@ def orm_update(ob: any):
         return 0
     finally:
         cursor.close()
-def orm_select(cls: type, where:str=None, *params):
+
+
+def orm_select(cls: type, where: str = None, *params):
     host: HostItem = orm_get_attribute(cls)
-    sql=get_sql_select(cls, host)
+    sql = get_sql_select(cls, host)
     if where is not None:
-        sql+=where
-    p=[]
+        sql += where
+    p = []
     if params is not None:
         for param in params:
             p.append(param)
@@ -185,15 +194,25 @@ def orm_select(cls: type, where:str=None, *params):
     try:
         cursor.execute(sql, p)
         for record in cursor:
-           print(record)
+            index = 0
+            ob = cls()
+            for key, value in host.columns.items():
+                setattr(ob, key, record[index])
+                index = index + 1
+            yield ob
+
     except Exception as e:
-        print("orm", e)
-        return 0
+        raise Exception("orm select", e)
     finally:
         cursor.close()
+def orm_table_name(cls: type) -> str:
+    c=orm_get_attribute(cls)
+    if c.table_name is None:
+        raise Exception(f'тип:{cls} не предназначен для работы с базой данных, у него отсутствуют атрибуты для маппига в базу данных, в описании типа')
+    return c.table_name
 
-
-
-
-
-
+def orm_column_name(cls: type,propertyName:str) -> str:
+    for key,value in orm_get_attribute(cls).columns.items():
+        if value.name_property == propertyName:
+            return value.name_table
+    raise Exception(f'нозвание колонки асоциированоой для поля {propertyName}, таблицы для типа: {cls} отсутствует')

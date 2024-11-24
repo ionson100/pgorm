@@ -20,16 +20,19 @@ class StringBuilder:
         return self._file_str
 
 
-def get_str_doc(s:str|None):
+def get_str_doc(s:str|None) ->str|None:
+    """
+    Ищет в описании prprty строку с границами orm{}orm (orm{(.*?)\}orm)
+    :param s: строка описание property
+    :return: найденая строка или None
+    """
     if s is None:
         return None
     pattern = r'orm{(.*?)\}orm'
 
     match = re.search(pattern, s.replace('\t','').replace('\r','').replace('\n','').strip())
     if match:
-        # s=match.group(1).replace('\n','').replace('\t','').replace('\r','').strip()
-        # print('sssssss',s)
-        return  match.group(1)
+        return  '{'+match.group(1)+'}'
     else:
         return None
 
@@ -57,7 +60,6 @@ def get_attr_docs(cls: type) -> dict[str, str]:
             st=get_str_doc(doc)
             if st is None:
                 continue
-            st='{'+st+'}'
             print(st)
             out[target.id] = st
     return out
@@ -75,10 +77,17 @@ def get_attribute_all(cls:type)-> dict[str, str]:
         out[k]=res[k]
 
     return out
+
 def get_attribute_class(cls:type)->str|None:
+    """
+     Ищет в описании класс, строку с границами orm{}orm (orm{(.*?)\}orm)
+    :param s: строка описание класса
+    :return: найденая строка или None
+    :param cls:
+    :return:
+    """
     s=cls.__doc__
     s=get_str_doc(s)
     if s is None:
         raise TypeError(f"Тип: {cls} не имеет описания как объект для работы с орм")
-    return '{'+s+'}'
-    #return cls.__doc__
+    return s
