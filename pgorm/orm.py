@@ -207,12 +207,10 @@ def orm_select(cls: type, where: str = None, *params):
         cursor.close()
 def orm_table_name(cls: type) -> str:
     c=orm_get_attribute(cls)
-    if c.table_name is None:
-        raise Exception(f'тип:{cls} не предназначен для работы с базой данных, у него отсутствуют атрибуты для маппига в базу данных, в описании типа')
     return c.table_name
 
 def orm_column_name(cls: type,propertyName:str) -> str:
     for key,value in orm_get_attribute(cls).columns.items():
         if value.name_property == propertyName:
             return value.name_table
-    raise Exception(f'нозвание колонки асоциированоой для поля {propertyName}, таблицы для типа: {cls} отсутствует')
+    raise Exception(f'нозвание колонки асоциированоой для поля {propertyName}, в таблице : {cls} отсутствует')
