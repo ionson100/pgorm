@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Sequence, Mapping
-
+import logging
 import psycopg2
 
 from .biulderInsert import get_sql_insert
@@ -226,10 +226,11 @@ def orm_execute(sql: str | bytes | Composable,params:Sequence | Mapping[str, Any
     cursor = _self_host.connect.cursor()
     try:
         cursor.execute(sql, params)
+        logging.debug((sql, params))
         for record in cursor:
             yield record
     except Exception as e:
-        raise Exception("orm select", e)
+        logging.error('orm select',e,exc_info=True)
     finally:
         cursor.close()
 

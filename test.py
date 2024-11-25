@@ -2,13 +2,14 @@ import json
 import uuid
 import datetime
 import psycopg2
+import logging
 
 
 from uuid import uuid4
 
 from psycopg2.sql import Identifier, SQL
 
-
+logging.basicConfig(level=logging.DEBUG)
 def builder_attribute(*, name: str, type: str, default: str, is_pk: bool = False):
     dec: dict[str, any()] = {'name': name, 'type': type, 'default': default, 'pk': is_pk}
     return dec
@@ -81,11 +82,11 @@ class Test:
 
 
 
-# if orm_exist_table(Test):
-#     orm_drop_table(Test)
-#     orm_create_table(Test)
-# else:
-#     orm_create_table(Test)
+if orm_exist_table(Test):
+    orm_drop_table(Test)
+    orm_create_table(Test)
+else:
+    orm_create_table(Test)
 
 
 
@@ -106,7 +107,7 @@ orm_insert(t)
 # print(orm_column_name(Test,"name"))
 
 cur=orm_get_connect().cursor()
-res=cur.execute("select * from test where name <> null")
+#res=cur.execute("select * from test where name <> null")
 # for r in res:
 #     print(r)
 res=orm_execute( "select * from test where age =%(assa)s", {'assa':45})
