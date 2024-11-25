@@ -1,12 +1,14 @@
-from typing import Tuple, Any
+from __future__ import annotations
+
+from typing import Any, Sequence, Mapping
 
 import psycopg2
 
-from .buildUpdate import get_sql_update
-from .builderTable import _create_table
-from .hostitem import get_host_base
 from .biulderInsert import get_sql_insert
+from .buildUpdate import get_sql_update
 from .builderSelect import get_sql_select
+from .builderTable import _create_table
+from .hostitem import get_host_base, HostItem
 
 
 class Transaction:
@@ -209,8 +211,35 @@ def orm_table_name(cls: type) -> str:
     c=orm_get_attribute(cls)
     return c.table_name
 
-def orm_column_name(cls: type,propertyName:str) -> str:
+def orm_column_name(cls: type, property_name:str) -> str:
     for key,value in orm_get_attribute(cls).columns.items():
-        if value.name_property == propertyName:
+        if value.name_property == property_name:
             return value.name_table
-    raise Exception(f'нозвание колонки асоциированоой для поля {propertyName}, в таблице : {cls} отсутствует')
+    raise Exception(f'нозвание колонки асоциированоой для поля {property_name}, в таблице : {cls} отсутствует')
+
+
+class Composable:
+    pass
+
+
+def orm_execute(sql: str | bytes | Composable,params:Sequence | Mapping[str, Any] | None = None):#Sequence | Mapping[str, Any] | None = None
+    cursor = _self_host.connect.cursor()
+    try:
+        cursor.execute(sql, params)
+        for record in cursor:
+            yield record
+    except Exception as e:
+        raise Exception("orm select", e)
+    finally:
+        cursor.close()
+
+def orm_execute_not_query(sql:str,*params):
+    cursor = _self_host.connect.cursor()
+    try:
+        cursor.execute(sql, params)
+        for record in cursor:
+            yield record
+    except Exception as e:
+        raise Exception("orm select", e)
+    finally:
+        cursor.close()
