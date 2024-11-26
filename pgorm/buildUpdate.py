@@ -14,7 +14,6 @@ def _inner_builder(h:HostItem,t:type):
         if not value.isPk:
             continue
         sql+=f'"{value.name_table}" = (%s);'
-    print(sql)
     _dictUpdate[t]= sql
 
 
