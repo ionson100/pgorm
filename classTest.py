@@ -9,9 +9,9 @@ class Test:
     orm{'name':'test'}orm
     """
 
-    id: uuid = uuid.uuid4().__str__()
+    id: uuid
     """
-    Эта переменная тестовая\n
+    Эта первичный ключ\n
     orm{
     'name': 'id',
     'type': 'uuid',
@@ -20,26 +20,34 @@ class Test:
     }orm
 
     """
-    my_date: datetime = datetime.datetime.now()
-    """
-    orm{'name': 'date', 'type': 'timestamp', 'default': 'null ', 'pk': False}orm
-    """
+    my_list:list[int]
+    """orm{'name': 'list', 'type': 'integer[]', 'default': 'null ', 'pk': False}orm"""
+
+
+    my_date: datetime
+    """orm{'name': 'date', 'type': 'timestamp', 'default': 'null ', 'pk': False}orm"""
 
     name2: str = 'sdsd'
     """
     sasasi isoais i
     """
 
+    def __init__(self):
+        self.id = str(uuid.uuid4())
+        self.my_date = datetime.datetime.now()
+        self.my_list=[1,2,3]
+
+
     def __str__(self):
         """
         saaspaos osapospaos
         :return:
         """
-        return str((self.id,self.name,self.age,self.my_date))
+        return str((self.id,self.name,self.age,self.my_date,self.my_list))
 
     name: str
     """orm{'name':'name','type':'TEXT',  'default':'DEFAULT NULL'}orm"""
-    age: int
+    age: int=23
     """orm{'name': 'age', 'type': 'integer', 'default': 'DEFAULT 0'}orm"""
 
     def toJson(self):

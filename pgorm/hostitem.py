@@ -33,7 +33,7 @@ class HostAttribute:
         host_item.table_name = None if table.get('name') is None else table.get("name")
         host_item.table_other=None if table.get('other') is None else table.get("other")
         if host_item.table_name is None:
-            raise Exception(f'Название таблицы не определено: {json_str}')
+            raise Exception(f'Table name is not defined: {json_str}')
         columns=get_attribute_all(cls)
 
         for key, value in columns.items():
@@ -46,7 +46,7 @@ class HostAttribute:
             column_data.isPk=False if col.get('pk') is None else col.get('pk')
             host_item.columns[key]=column_data
             if column_data.name_table is None:
-                raise Exception(f'Название  поля таблицы не опредено: {value}')
+                raise Exception(f'Table field name is not defined: {value}')
 
             self.dictHost[cls]=host_item
 

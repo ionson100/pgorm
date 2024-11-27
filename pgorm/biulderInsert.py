@@ -16,7 +16,7 @@ def _inner_builder(h:HostItem,t:type):
 
     for key, value in h.columns.items():
         if value.isPk is True:
-            sql+=value.name_table+';'
+            sql += f'"{value.name_table}" ;'
     _dictInsert[t]= sql
 
 
