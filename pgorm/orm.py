@@ -18,11 +18,10 @@ _self_host = _Host()
 class OrmConnection:
     """Basic type for working with orm, initializing a connection, getting a session"""
 
-    def __init__(self, *, dbname: str, user: str = 'postgres', password: str = 'postgres', host: str = 'localhost',
-                 port: int = 5432):
+    def __init__(self, dsn=None, connection_factory=None, cursor_factory=None, **kwargs):
         """Initialization of the ORM is usually required at the beginning of the program."""
         if _self_host.connect is None:
-            _self_host.connect = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
+            _self_host.connect = psycopg2.connect(dsn,connection_factory,cursor_factory,**kwargs)
             _self_host.connect.autocommit = True
 
     def __enter__(self):

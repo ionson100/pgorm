@@ -16,11 +16,9 @@ def buildInsertBulk(h:HostItem,*ob)->(str,list[any]):
     for o in ob:
         sql= sql +_portion(h, o, params)
     sql=sql.strip(' ').strip(',')+ ' RETURNING '
+    sql += f'"{h.pk_column_name}" ;'
 
-    for key, value in h.columns.items():
-        if value.isPk is True:
-            sql += f'"{value.name_table}" ;'
-    return (sql,params)
+    return sql,params
 
 
 

@@ -13,10 +13,9 @@ def _inner_builder(h:HostItem,t:type):
     for _, value in h.columns.items():
         sql+='(%s), '
     sql = sql.strip(' ').strip(',') + ') RETURNING '
+    sql += f'"{h.pk_column_name}" ;'
 
-    for key, value in h.columns.items():
-        if value.isPk is True:
-            sql += f'"{value.name_table}" ;'
+
     _dictInsert[t]= sql
 
 

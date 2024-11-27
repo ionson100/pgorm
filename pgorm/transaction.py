@@ -6,8 +6,11 @@ class Transaction:
     """Performing a transaction in isolation"""
 
 
-    def __init__(self, con: psycopg2.extensions.connection):
+    def __init__(self, con: psycopg2.extensions.connection,level:int|None):
         self.connection: psycopg2.extensions.connection | None = con
+        self.connection.autocommit=False
+        if level is not None:
+            self.connection.set_isolation_level(level)
 
     def __enter__(self):
         return self

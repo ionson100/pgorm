@@ -70,8 +70,9 @@ class Session:
             for record in self._cursor:
                 [d] = record
                 return d
-        except Exception as e:
-            logging.error(f'orm:exist table.{e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def createTable(self, cls: type):
         """Creating a table from a class, the class type must have all attributes to be created"""
@@ -79,8 +80,9 @@ class Session:
             sql = _create_table(_get_attribute(cls))
             self._cursor.execute(sql)
             logging.debug(f'orm:create table.sql:{sql}')
-        except Exception as e:
-            logging.error(f'orm:create table.{e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def truncateTable(self, cls: type):
         """
@@ -92,8 +94,9 @@ class Session:
             sql = f'TRUNCATE TABLE "{_get_attribute(cls).table_name}";'
             self._cursor.execute(sql)
             logging.debug(f'orm:truncate table.sql:{sql}')
-        except Exception as e:
-            logging.error('orm:truncate table.', e, exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def dropTable(self, cls: type):
         """
@@ -104,8 +107,9 @@ class Session:
             sql = f'DROP TABLE "{_get_attribute(cls).table_name}";'
             self._cursor.execute(sql)
             logging.debug(f'orm:drop table.sql:{sql}')
-        except Exception as e:
-            logging.error('orm:drop table.', e, exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def deleteFromTable(self, cls: type, where: str = '',
                         params: Sequence | Mapping[str, Any] | None = None):
@@ -122,8 +126,9 @@ class Session:
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
-        except Exception as e:
-            logging.error(f'orm:delete table :{e.args}',  exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def deleteFromOnlyTable(self, cls: type, where: str = '',
                             params: Sequence | Mapping[str, Any] | None = None) ->int:
@@ -138,8 +143,9 @@ class Session:
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
-        except Exception as e:
-            logging.error(f'orm:delete only table. {e.args}',  exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def insert(self, ob: any) ->int:
         try:
@@ -149,12 +155,11 @@ class Session:
             logging.debug(f'orm:insert.sql:{sql}')
             for record in self._cursor:
                 [d] = record
-                for key, value in host.columns.items():
-                    if value.isPk is True:
-                        setattr(ob, value.name_property, d)
+                setattr(ob, host.pk_property_name, d)
             return self._cursor.rowcount
-        except Exception as e:
-            logging.error(f'orm:insert. {e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def update(self, ob: any) ->int:
         try:
@@ -164,8 +169,9 @@ class Session:
             self._cursor.execute(sql[0], sql[1])
             return self._cursor.rowcount
 
-        except Exception as e:
-            logging.error(f'orm:update. {e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def select(self, cls: type, where: str = None,
                params: Sequence | Mapping[str, Any] | None = None) -> list[any]:
@@ -187,8 +193,9 @@ class Session:
                     setattr(ob, key, record[index])
                     index = index + 1
                 yield ob
-        except Exception as e:
-            logging.error(f'orm:select. {e.args}',  exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def execute(self, sql: str | bytes,
                 params: Sequence | Mapping[str, Any] | None = None):  # Sequence | Mapping[str, Any] | None = None
@@ -198,8 +205,9 @@ class Session:
             logging.debug(f'orm:execute.sql:{(sql, params)}')
             for record in self._cursor:
                 yield record
-        except Exception as e:
-            logging.error(f'orm execute. {e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def executeNotQuery(self, sql: str | bytes,
                         params: Sequence | Mapping[
@@ -208,15 +216,15 @@ class Session:
             logging.debug(f'orm:executeNotQuery.sql:{(sql, params)}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
-        except Exception as e:
-            logging.error(f'orm executeNotQuery{e.args}',  exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
 
     def beginTransaction(self, level: int | None = None) -> Transaction:
 
-        t = Transaction(self._cursor.connection)
-        t.connection.autocommit = False
-        if level is not None:
-            t.connection.set_isolation_level(level)
+        t = Transaction(self._cursor.connection,level)
+
+
         return t
 
     def insertBulk(self, ob: [any]) ->int:
@@ -225,14 +233,12 @@ class Session:
             sql = buildInsertBulk(host, *ob)
             logging.debug(f'orm:insertBulk.sql:{sql}')
             self._cursor.execute(sql[0], sql[1])
-            field_pk: str | None = None
-            for key, value in host.columns.items():
-                if value.isPk is True:
-                    field_pk = key
             index = 0
             for record in self._cursor:
-                setattr(ob[index], field_pk, record)
+                setattr(ob[index], host.pk_property_name, record)
                 index = index + 1
             return self._cursor.rowcount
-        except Exception as e:
-            logging.error(f'orm:insertBulk. {e.args}', exc_info=True)
+        except Exception as exc:
+            logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+

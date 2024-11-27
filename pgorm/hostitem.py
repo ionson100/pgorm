@@ -20,6 +20,8 @@ class _ColumnData:
 class HostItem:
     table_name:str|None=None
     table_other:str|None=None
+    pk_column_name:str|None=None
+    pk_property_name:str|None=None
     columns:dict[str,_ColumnData]={}
 class HostAttribute:
     dictHost:dict[type,HostItem]={}
@@ -44,6 +46,9 @@ class HostAttribute:
             column_data.type=None if col.get('type') is None else col['type']
             column_data.default=None if col.get('default') is None else col['default']
             column_data.isPk=False if col.get('pk') is None else col.get('pk')
+            if column_data.isPk:
+                host_item.pk_column_name=column_data.name_table
+                host_item.pk_property_name=column_data.name_property
             host_item.columns[key]=column_data
             if column_data.name_table is None:
                 raise Exception(f'Table field name is not defined: {value}')

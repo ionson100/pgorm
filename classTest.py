@@ -36,6 +36,8 @@ class Test:
         self.id = str(uuid.uuid4())
         self.my_date = datetime.datetime.now()
         self.my_list=[1,2,3]
+        self.name='sdsd'
+        self.age=20
 
 
     def __str__(self):
