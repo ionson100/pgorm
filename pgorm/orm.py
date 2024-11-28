@@ -50,9 +50,14 @@ class OrmConnection:
     Any other keyword parameter will be passed to the underlying client
     library: the list of supported parameters depends on the library version.
         """
-        if _self_host.connect is None:
-            _self_host.connect = psycopg2.connect(dsn, connection_factory, cursor_factory, **kwargs)
-            _self_host.connect.autocommit = True
+        try:
+            if _self_host.connect is None:
+                _self_host.connect = psycopg2.connect(dsn, connection_factory, cursor_factory, **kwargs)
+                _self_host.connect.autocommit = True
+        except Exception as e:
+            raise
+
+
 
     def __enter__(self):
         return self

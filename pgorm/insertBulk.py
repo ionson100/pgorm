@@ -19,7 +19,7 @@ def _portion(h:HostItem, ob:any, p:list[any]):
 
 def buildInsertBulk(h:HostItem,*ob)->(str,list[any]):
     params:list[any]=[]
-    sql=f'INSERT INTO {h.table_name} ('
+    sql=f'INSERT INTO "{h.table_name}" ('
     for key,value in h.columns.items():
         if value.isPk == True and value.mode_generate_pk_server == True:
             continue

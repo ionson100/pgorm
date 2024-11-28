@@ -61,7 +61,7 @@ def get_attr_docs(cls: type) -> dict[str, str]:
             st=get_str_doc(doc)
             if st is None:
                 continue
-            logging.debug(f'build attribute- {target.id}:{st}')
+            logging.debug(f'build attribute-{cls} {target.id}:{st}')
             out[target.id] = st
     return out
 def get_attribute_all(cls:type)-> dict[str, str]:

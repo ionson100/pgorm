@@ -38,7 +38,7 @@ class Session:
     @staticmethod
     def tableName(cls: type) -> str:
         """Get the name of the table in the database associated with the type"""
-        return _get_attribute(cls).table_name
+        return f'"{_get_attribute(cls).table_name}"'
 
     @staticmethod
     def columnName(cls: type, property_name: str) -> str:
@@ -50,7 +50,7 @@ class Session:
         """
         for key, value in _get_attribute(cls).columns.items():
             if value.name_property == property_name:
-                return value.name_table
+                return f'"{value.name_table}"'
         logging.error(
             f'The name of the column associated with the field {property_name}, in the table : {cls} is missing',
             exc_info=True)
@@ -202,8 +202,9 @@ class Session:
             if params is not None:
                 for param in params:
                     p.append(param)
-            self._cursor.execute(sql, p)
             logging.debug(f'orm:select.sql:{(sql, p)}')
+            self._cursor.execute(sql, p)
+
             for record in self._cursor:
                 index = 0
                 ob = cls()

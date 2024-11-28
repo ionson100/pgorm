@@ -4,7 +4,7 @@ import uuid
 class ForeignKey:
     """orm{'name':'ForeignKey'}orm"""
     id: str
-    """orm{'name':'_Id_key','type':'uuid ',  'default':'PRIMARY KEY','pk':True, }orm"""
+    """orm{'name':'_id','type':'SERIAL ',  'default':'PRIMARY KEY','pk':True, 'mode':True}orm"""
     name: str;
     """orm{'name':'Name_key','type':'TEXT',  'default':'DEFAULT NULL'}orm"""
     id_test: str;
