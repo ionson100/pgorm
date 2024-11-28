@@ -1,7 +1,7 @@
 from multiprocessing.managers import Value
 from typing import Sequence, Mapping, Any
 
-from psycopg.generators import execute
+
 
 from pgorm.hostitem import get_host_base, HostItem
 from pgorm.builderSelect import get_sql_select
@@ -34,14 +34,18 @@ def getRelatives(cls: type,fk:str, add_where: str = None,
                         for param in params:
                             p.append(param)
                     logging.debug(f'orm:decorator.sql:{(sql, p)}')
-                    session = OrmConnection.getSession()
+                    with OrmConnection().getSession() as session:
+                        result_list: list[cls] = []
 
-                    result_list: list[cls] = []
-                    for r in session.execute(sql, tuple(p)):
-                        result_list.append(r)
-                    setattr(self, value_key, result_list)
+                        for r in session.execute(sql, tuple(p)):
+                            result_list.append(r)
+
+                        setattr(self, value_key, result_list)
 
                     return getattr(self, value_key)
+
+
+
             except Exception as exc:
                 logging.error("%s: %s" % (exc.__class__.__name__, exc))
                 raise

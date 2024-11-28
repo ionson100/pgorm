@@ -9,19 +9,19 @@ logging.basicConfig(level=logging.DEBUG)
 with OrmConnection(password='ion100312873', host='localhost', port=5432, user='postgres', dbname='test') as c:
     with OrmConnection.getSession() as session:
 
-        # exist = session.existTable(Test221)
-        # if exist:
-        #     session.dropTable(Test221)
-        #     session.createTable(Test221)
-        # else:
-        #     session.createTable(Test221)
-        #
-        # exist1 = session.existTable(ForeignKey)
-        # if exist1:
-        #     session.dropTable(ForeignKey)
-        #     session.createTable(ForeignKey)
-        # else:
-        #     session.createTable(ForeignKey)
+        exist = session.existTable(Test221)
+        if exist:
+            session.dropTable(Test221)
+            session.createTable(Test221)
+        else:
+            session.createTable(Test221)
+
+        exist1 = session.existTable(ForeignKey)
+        if exist1:
+            session.dropTable(ForeignKey)
+            session.createTable(ForeignKey)
+        else:
+            session.createTable(ForeignKey)
         session.truncateTable(Test221)
         session.tableName(ForeignKey)
 
