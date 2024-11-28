@@ -7,7 +7,7 @@ def _create_table(host:HostItem) -> str:
     builder.Append(f'CREATE TABLE   "{host.table_name}" (\n ')
     for key,value in host.columns.items():
         if value.isPk:
-            builder.Append(f'   "{value.name_table}" {value.type} PRIMARY KEY {value.default},\n')
+            builder.Append(f'   "{value.name_table}" {value.type}  {value.default},\n')
     for key,value in host.columns.items():
         if not value.isPk:
             builder.Append(f'   "{value.name_table}" {value.type} {value.default},\n')

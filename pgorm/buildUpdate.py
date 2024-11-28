@@ -1,4 +1,4 @@
-from .hostitem import HostItem, _ColumnData
+from .hostitem import HostItem
 
 _dictUpdate:dict[type,str]={}
 def _inner_builder(h:HostItem,t:type):

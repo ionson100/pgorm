@@ -1,4 +1,5 @@
-from .hostitem import HostItem, _ColumnData
+from .hostitem import HostItem
+from .jsonWorker import get_json
 
 _dictInsert:dict[type,str]={}
 
@@ -6,16 +7,21 @@ _dictInsert:dict[type,str]={}
 
 
 def _inner_builder(h:HostItem,t:type):
-    sql=f'INSERT INTO {h.table_name} ('
+    sql=f'INSERT INTO "{h.table_name}" ('
     for key,value in h.columns.items():
+        if value.isPk == True and value.mode_generate_pk_server == True:
+            continue
         sql+=f'"{value.name_table}", '
     sql=sql.strip(' ').strip(',')+ ') VALUES ('
-    for _, value in h.columns.items():
+    for key, value in h.columns.items():
+        if value.isPk==True and value.mode_generate_pk_server==True:
+            continue
         sql+='(%s), '
-    sql = sql.strip(' ').strip(',') + ') RETURNING '
-    sql += f'"{h.pk_column_name}" ;'
-
-
+    if h.pk_generate_server:
+        sql = sql.strip(' ').strip(',') + ') RETURNING '
+        sql += f'"{h.pk_column_name}" ;'
+    else:
+        sql = sql.strip(' ').strip(',') + ') ;'
     _dictInsert[t]= sql
 
 
@@ -23,8 +29,16 @@ def _inner_builder(h:HostItem,t:type):
 def _inner_build_param(o:any,h:HostItem):
     d:list[any]=[]
     for key, value in h.columns.items():
-        v=getattr(o,key)
-        d.append(v)
+        if value.isPk==True and value.mode_generate_pk_server==True:
+            continue
+        if value.type== "jsonb":
+            v = getattr(o, key)
+            d.append(get_json(v))
+        else:
+            v = getattr(o, key)
+            d.append(v)
+
+
     return d
 
 
