@@ -1,11 +1,11 @@
 import logging
 from models.classTest22 import Test221
-from pgorm.orm import OrmConnection
+from pgorm.orm import OrmConnectionNotPool
 
 logging.basicConfig(level=logging.DEBUG)
 
-with OrmConnection(password='postgres', host='192.168.70.119', port=5432, user='postgres', dbname='test') as c:
-    with OrmConnection.getSession() as session:
+with OrmConnectionNotPool(password='postgres', host='192.168.70.119', port=5432, user='postgres', dbname='test') as c:
+    with OrmConnectionNotPool.getSession() as session:
         exist = session.existTable(Test221)
         if exist:
 

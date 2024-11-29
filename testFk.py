@@ -1,13 +1,15 @@
 import logging
+from uuid import uuid4
 
 from models.classForeignKey import ForeignKey
 from models.classTest221 import Test221
-from pgorm.orm import OrmConnection
+from pgorm import Session
+from pgorm.orm import OrmConnectionNotPool
 
 logging.basicConfig(level=logging.DEBUG)
 
-with OrmConnection(password='ion100312873', host='localhost', port=5432, user='postgres', dbname='test') as c:
-    with OrmConnection.getSession() as session:
+with OrmConnectionNotPool(password='postgres', host='192.168.70.119', port=5432, user='postgres', dbname='test') as c:
+    with OrmConnectionNotPool.getSession() as session:
 
         exist = session.existTable(Test221)
         if exist:
@@ -41,3 +43,9 @@ with OrmConnection(password='ion100312873', host='localhost', port=5432, user='p
         for r in res:
             print(r.getForeignObject())
             print(r.getForeignObject())
+        # print(session.get(Test221,t.id))
+        # print(session.get(Test221, str(uuid4())))
+        #print(session.firstOrNull(Test221,f'where {Session.columnName(Test221,'name')} = %s',[t.name]))
+
+        #print(session.singleOrException(Test221,f'where {Session.columnName(Test221,'id')} = %s',[str(uuid4())]))
+        print(session.deleteFromTable(Test221,f'where {Session.columnName(Test221,'id')} = %s ; ',[str(uuid4())]))

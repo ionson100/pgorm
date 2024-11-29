@@ -1,11 +1,11 @@
-from multiprocessing.managers import Value
+
 from typing import Sequence, Mapping, Any
 
 
 
 from pgorm.hostitem import get_host_base, HostItem
 from pgorm.builderSelect import get_sql_select
-from pgorm.orm import OrmConnection
+from pgorm.orm import OrmConnectionNotPool
 import logging
 
 
@@ -34,7 +34,7 @@ def getRelatives(cls: type,fk:str, add_where: str = None,
                         for param in params:
                             p.append(param)
                     logging.debug(f'orm:decorator.sql:{(sql, p)}')
-                    with OrmConnection().getSession() as session:
+                    with OrmConnectionNotPool().getSession() as session:
                         result_list: list[cls] = []
 
                         for r in session.execute(sql, tuple(p)):

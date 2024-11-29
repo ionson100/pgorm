@@ -1,8 +1,6 @@
 from typing import Sequence, Mapping, Any
-
 import psycopg2
 import logging
-
 from pgorm.biulderInsert import get_sql_insert
 from pgorm.buildUpdate import get_sql_update
 from pgorm.builderSelect import get_sql_select
@@ -117,6 +115,8 @@ class Session:
         :return rows count deleted.
         """
         try:
+            if where is not None:
+                where=where.strip().strip(';')
             sql = f'DELETE FROM "{_get_attribute(cls).table_name}" {where};'
             logging.debug(f'orm:delete table.sql:{sql} {params}')
             self._cursor.execute(sql, params)
@@ -127,13 +127,15 @@ class Session:
             raise
 
     def deleteFromOnlyTable(self, cls: type, where: str = '',
-                            params: Sequence | Mapping[str, Any] | None = None) ->int:
+                            params: Sequence | Mapping[str, Any] | None = None) -> int:
         """
         deletes rows that satisfy the WHERE clause from the specified table.
         If the WHERE clause is absent, the effect is to delete all rows in the table. The result is a valid, but empty table
         :return rows count deleted.
         """
         try:
+            if where is not None:
+                where=where.strip().strip(';')
             sql = f'DELETE FROM ONLY "{_get_attribute(cls).table_name}" {where};'
             logging.debug(f'orm:delete only table.sql:{sql} {params}')
             self._cursor.execute(sql, params)
@@ -143,7 +145,7 @@ class Session:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def insert(self, ob: any) ->int:
+    def insert(self, ob: any) -> int:
         """
         Inserting an object into a database, the object must have all the attributes that describe it in the database
         :param ob: object to insert
@@ -152,7 +154,7 @@ class Session:
 
         try:
             host: HostItem = _get_attribute(type(ob))
-            sql: tuple[any | None, None] = get_sql_insert(ob, host)
+            sql: tuple[any , None] = get_sql_insert(ob, host)
             logging.debug(f'orm:insert.sql:{sql}')
             self._cursor.execute(sql[0], sql[1])
 
@@ -161,13 +163,12 @@ class Session:
                     [d] = record
                     setattr(ob, host.pk_property_name, d)
 
-
             return self._cursor.rowcount
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def update(self, ob: any) ->int:
+    def update(self, ob: any) -> int:
         """
         Updating an object into a database, the object must have all the attributes that describe it in the database
         :param ob: object to update
@@ -175,7 +176,7 @@ class Session:
         """
         try:
             host: HostItem = _get_attribute(type(ob))
-            sql: tuple[any | None, None] = get_sql_update(ob, host)
+            sql: tuple[any, None] = get_sql_update(ob, host)
             logging.debug(f'orm:update.sql:{sql}')
             self._cursor.execute(sql[0], sql[1])
             return self._cursor.rowcount
@@ -197,11 +198,12 @@ class Session:
             host: HostItem = _get_attribute(cls)
             sql = get_sql_select(cls, host)
             if where is not None:
-                sql += where
+                sql += where.strip().strip(';')
             p = []
             if params is not None:
                 for param in params:
                     p.append(param)
+            sql+=';'
             logging.debug(f'orm:select.sql:{(sql, p)}')
             self._cursor.execute(sql, p)
 
@@ -209,8 +211,8 @@ class Session:
                 index = 0
                 ob = cls()
                 for key, value in host.columns.items():
-                    if value.type.strip()== 'jsonb':
-                        v=get_object_from_json(record[index])
+                    if value.type.strip() == 'jsonb':
+                        v = get_object_from_json(record[index])
                         setattr(ob, key, v)
                     else:
                         setattr(ob, key, record[index])
@@ -224,12 +226,13 @@ class Session:
                 params: Sequence | Mapping[str, Any] | None = None):  # Sequence | Mapping[str, Any] | None = None
         """
         Getting an iterator for an arbitrary query string
-        :param sql: query string
+        :param sql: request string
         :param params: array of parameters according to psycopg2 specification
         :return: count of rows affected in the database
         """
 
         try:
+
             self._cursor.execute(sql, params)
             logging.debug(f'orm:execute.sql:{(sql, params)}')
             for record in self._cursor:
@@ -238,9 +241,8 @@ class Session:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def executeNotQuery(self, sql: str | bytes,
-                        params: Sequence | Mapping[
-                            str, Any] | None = None) ->int:  # Sequence | Mapping[str, Any] | None = None
+    def executeNonQuery(self, sql: str | bytes,
+                        params: Sequence | Mapping[str, Any] | None = None) -> int:  # Sequence | Mapping[str, Any] | None = None
         """
         Execute a query without returning a result
         :param sql: query string
@@ -262,12 +264,11 @@ class Session:
         :return: Transaction
         """
 
-        t = Transaction(self._cursor.connection,level)
-
+        t = Transaction(self._cursor.connection, level)
 
         return t
 
-    def insertBulk(self, ob: [any]) ->int:
+    def insertBulk(self, ob: [any]) -> int:
         """
         Batch insert an array of objects into a database.
         All objects must be of the same type.
@@ -276,7 +277,7 @@ class Session:
         :return: count of rows affected in the database
         """
         try:
-            if len(ob)==0:
+            if len(ob) == 0:
                 return 0
             host: HostItem = _get_attribute(type(ob[0]))
             sql = buildInsertBulk(host, *ob)
@@ -288,11 +289,162 @@ class Session:
                     setattr(ob[index], host.pk_property_name, record)
                     index = index + 1
 
-
             return self._cursor.rowcount
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
+
     def cancel(self):
+        """Canceling execution of long queries"""
         self._cursor.connection.cancel()
+
+    def getByPrimaryKey(self, cls: type, id_value: any)-> object|None:
+        """
+        Getting an object of type by primary key value
+        :param cls: A type that has descriptions of database attributes
+        :param id_value:Primary Key Value
+        :return:Object of type or None
+        """
+        try:
+            host: HostItem = _get_attribute(cls)
+            sql = get_sql_select(cls, host)
+            sql += f'WHERE "{host.pk_column_name}" = %s'
+            logging.debug(f'orm: get.sql:{sql}')
+            self._cursor.execute(sql, [id_value])
+            ob = None
+            for record in self._cursor:
+                index = 0
+                ob = cls()
+                for key, value in host.columns.items():
+                    if value.type.strip() == 'jsonb':
+                        v = get_object_from_json(record[index])
+                        setattr(ob, key, v)
+                    else:
+                        setattr(ob, key, record[index])
+                    index = index + 1
+            return ob
+
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
+
+    def any(self,cls: type, where: str = None,
+               params: Sequence | Mapping[str, Any] | None = None) ->bool:
+        """
+        Checks for rows in the database based on the query condition
+        :param cls:  A type that has descriptions of database attributes
+        :param where: query string
+        :param params: array of parameters according to psycopg2 specification
+        :return: True - rows is  found, False rows not found
+        """
+        try:
+            host: HostItem = _get_attribute(cls)
+            sql = f'SELECT EXISTS (SELECT 1 FROM "{host.table_name}" '
+            if where is not None:
+                sql += where.strip().strip(';')
+            sql += ');'
+            logging.debug(f'orm: any.sql:{(sql,params)}')
+            self._cursor.execute(sql, params)
+            for record in self._cursor:
+                [d] = record
+                return d
+            pass
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
+    def firstOrNull(self,cls: type, where: str = None,
+               params: Sequence | Mapping[str, Any] | None = None) ->object|None:
+        """
+        Gets the object from the first row of the query, if there is no row, returns none.
+        :param cls: a type that has descriptions of database attributes
+        :param where: query string
+        :param params: array of parameters according to psycopg2 specification
+        :return: params: Object of a given type
+        """
+        try:
+            host: HostItem = _get_attribute(cls)
+            sql = get_sql_select(cls, host)
+            if where is not None:
+                sql += where.strip().strip(';')
+            sql += ' LIMIT 1;'
+            logging.debug(f'orm: firstOrNull.sql:{(sql, params)}')
+            self._cursor.execute(sql, params)
+            ob = None
+            for record in self._cursor:
+                index = 0
+                ob = cls()
+                for key, value in host.columns.items():
+                    if value.type.strip() == 'jsonb':
+                        v = get_object_from_json(record[index])
+                        setattr(ob, key, v)
+                    else:
+                        setattr(ob, key, record[index])
+                    index = index + 1
+            return ob
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
+    def singleOrException(self,cls: type, where: str = None,
+               params: Sequence | Mapping[str, Any] | None = None) ->object:
+        """
+        Gets an object from a single row according to the request,
+        if the row is not found or more than one row is found, an exception is raised
+        :param cls: a type that has descriptions of database attributes
+        :param where: query string
+        :param params: array of parameters according to psycopg2 specification
+        :return: Object of a given type or raise Error
+        """
+        try:
+            host: HostItem = _get_attribute(cls)
+            sql = get_sql_select(cls, host)
+            if where is not None:
+                sql += where.strip().strip(';')
+            sql += ';'
+            logging.debug(f'orm: firstOrNull.sql:{(sql, params)}')
+            self._cursor.execute(sql, params)
+            ob=None
+            for record in self._cursor:
+                index = 0
+                if ob is None:
+                    ob = cls()
+                else:
+                    raise Exception("""
+                            An error occurred while selecting a single value, the number of rows in the selection is greater than one.
+                            """)
+
+                for key, value in host.columns.items():
+                    if value.type.strip() == 'jsonb':
+                        v = get_object_from_json(record[index])
+                        setattr(ob, key, v)
+                    else:
+                        setattr(ob, key, record[index])
+                    index = index + 1
+
+            if ob is None:
+                raise Exception("""
+                An error occurred while selecting a single value, the number of rows in the selection is zero.
+                """)
+
+            return ob
+
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

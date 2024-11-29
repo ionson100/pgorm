@@ -64,6 +64,7 @@ def get_attr_docs(cls: type) -> dict[str, str]:
             logging.debug(f'build attribute-{cls} {target.id}:{st}')
             out[target.id] = st
     return out
+
 def get_attribute_all(cls:type)-> dict[str, str]:
     out={}
     res=get_attr_docs(cls)
