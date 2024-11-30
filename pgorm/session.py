@@ -1,4 +1,6 @@
-from typing import Sequence, Mapping, Any
+from collections.abc import Iterator
+from operator import index
+from typing import Sequence, Mapping, Any, NoReturn
 import psycopg2
 import logging
 from pgorm.biulderInsert import get_sql_insert
@@ -9,6 +11,8 @@ from pgorm.hostitem import get_host_base, HostItem
 from pgorm.jsonWorker import get_object_from_json
 from pgorm.transaction import Transaction
 from pgorm.insertBulk import buildInsertBulk
+from pgorm.logAction import PrintExecutes
+import psycopg2.extras
 
 
 def _get_attribute(cls: type):
@@ -33,32 +37,18 @@ class Session:
             self._cursor.close()
             self._cursor = None
 
-    @staticmethod
-    def tableName(cls: type) -> str:
-        """Get the name of the table in the database associated with the type"""
-        return f'"{_get_attribute(cls).table_name}"'
 
-    @staticmethod
-    def columnName(cls: type, property_name: str) -> str:
-        """
-        Getting the name of a column in a table by the associated field in the type
-        :param cls: class
-        :param property_name: property name
-        :return: str or error
-        """
-        for key, value in _get_attribute(cls).columns.items():
-            if value.name_property == property_name:
-                return f'"{value.name_table}"'
-        logging.error(
-            f'The name of the column associated with the field {property_name}, in the table : {cls} is missing',
-            exc_info=True)
+
+    def getCursor(self):
+        return self._cursor
 
     def existTable(self, cls: type) -> bool:
         """Checking for table existence"""
         try:
             ta = _get_attribute(cls).table_name
             sql = f"""SELECT EXISTS  ( SELECT FROM  pg_tables WHERE  schemaname = 'public' AND  tablename  = '{ta}' );"""
-            logging.debug(f'orm:exist table.sql:{sql}')
+            PrintExecutes(f'exist table.sql:{sql}')
+
             self._cursor.execute(sql)
             for record in self._cursor:
                 [d] = record
@@ -67,46 +57,62 @@ class Session:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def createTable(self, cls: type):
-        """Creating a table from a class, the class type must have all attributes to be created"""
+    def createTable(self, cls: type, add_exist: bool = False):
+        """
+        Creating a table from a class, the class type must have all attributes to be created
+        :param cls: type must have all attributes to be created
+        :param add_exist:dds to the creation strung: IF NOT EXISTS
+        """
         try:
-            sql = _create_table(_get_attribute(cls))
-            logging.debug(f'orm:create table.sql:{sql}')
+            sql = _create_table(_get_attribute(cls), add_exist)
+            PrintExecutes(f'createTable :\n{sql}')
             self._cursor.execute(sql)
 
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def truncateTable(self, cls: type):
+    def truncateTable(self, cls: type) -> int:
         """
         TRUNCATE quickly removes all rows from a set of tables. It has the same effect as an unqualified DELETE on each table,
         but since it does not actually scan the tables it is faster. Furthermore,
         it reclaims disk space immediately, rather than requiring a subsequent VACUUM operation. This is most useful on large tables.
+        :param cls: type must have all attributes to be created
         """
         try:
-            sql = f'TRUNCATE TABLE "{_get_attribute(cls).table_name}";'
+
+            sql = f'TRUNCATE TABLE  "{_get_attribute(cls).table_name}";'
+            PrintExecutes(f'truncate table:{sql}')
             self._cursor.execute(sql)
-            logging.debug(f'orm:truncate table.sql:{sql}')
+            return self._cursor.rowcount
+
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def dropTable(self, cls: type):
+    def dropTable(self, cls: type, add_exist: bool = False) -> int:
         """
         DROP TABLE removes tables from the database. Only the table owner, the schema owner, and superuser can drop a table.
         To empty a table of rows without destroying the table, use DELETE or TRUNCATE.
+        :param cls: type must have all attributes to be created
+        :param add_exist:dds to the creation strung: IF EXISTS
         """
         try:
-            sql = f'DROP TABLE "{_get_attribute(cls).table_name}";'
+            append: str = ''
+            if add_exist:
+                append = 'IF EXISTS'
+            sql = f'DROP TABLE {append} "{_get_attribute(cls).table_name}";'
+            PrintExecutes(f'drop table:{sql}')
+
             self._cursor.execute(sql)
-            logging.debug(f'orm:drop table.sql:{sql}')
+            return self._cursor.rowcount
+
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
     def deleteFromTable(self, cls: type, where: str = '',
-                        params: Sequence | Mapping[str, Any] | None = None):
+                        params: Sequence | Mapping[str, Any] | None = None) -> int:
         """
         deletes rows that satisfy the WHERE clause from the specified table.
         If the WHERE clause is absent, the effect is to delete all rows in the table. The result is a valid, but empty table.
@@ -116,9 +122,9 @@ class Session:
         """
         try:
             if where is not None:
-                where=where.strip().strip(';')
+                where = where.strip().strip(';')
             sql = f'DELETE FROM "{_get_attribute(cls).table_name}" {where};'
-            logging.debug(f'orm:delete table.sql:{sql} {params}')
+            PrintExecutes(f'delete table.sql:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -135,9 +141,9 @@ class Session:
         """
         try:
             if where is not None:
-                where=where.strip().strip(';')
+                where = where.strip().strip(';')
             sql = f'DELETE FROM ONLY "{_get_attribute(cls).table_name}" {where};'
-            logging.debug(f'orm:delete only table.sql:{sql} {params}')
+            PrintExecutes(f'delete only table.sql:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -154,8 +160,8 @@ class Session:
 
         try:
             host: HostItem = _get_attribute(type(ob))
-            sql: tuple[any , None] = get_sql_insert(ob, host)
-            logging.debug(f'orm:insert.sql:{sql}')
+            sql: tuple[any, None] = get_sql_insert(ob, host)
+            PrintExecutes(f'insert:{sql}')
             self._cursor.execute(sql[0], sql[1])
 
             if host.pk_generate_server:
@@ -177,7 +183,7 @@ class Session:
         try:
             host: HostItem = _get_attribute(type(ob))
             sql: tuple[any, None] = get_sql_update(ob, host)
-            logging.debug(f'orm:update.sql:{sql}')
+            PrintExecutes(f'update:{sql}')
             self._cursor.execute(sql[0], sql[1])
             return self._cursor.rowcount
 
@@ -186,7 +192,7 @@ class Session:
             raise
 
     def select(self, cls: type, where: str = None,
-               params: Sequence | Mapping[str, Any] | None = None) -> list[any]:
+               params:  Sequence | Mapping[str, Any] | None = None) -> Iterator[Any]:
         """
         Getting an iterator to a selection from a database
         :param cls: Table type
@@ -199,25 +205,41 @@ class Session:
             sql = get_sql_select(cls, host)
             if where is not None:
                 sql += where.strip().strip(';')
-            p = []
-            if params is not None:
-                for param in params:
-                    p.append(param)
-            sql+=';'
-            logging.debug(f'orm:select.sql:{(sql, p)}')
-            self._cursor.execute(sql, p)
+            sql += ';'
+            PrintExecutes(f'select:{(sql, params)}')
+            self._cursor.execute(sql, params)
 
             for record in self._cursor:
-                index = 0
-                ob = cls()
-                for key, value in host.columns.items():
-                    if value.type.strip() == 'jsonb':
-                        v = get_object_from_json(record[index])
-                        setattr(ob, key, v)
-                    else:
-                        setattr(ob, key, record[index])
-                    index = index + 1
+                ob = _builder_object_from_type(record, cls, host)
                 yield ob
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
+    def selectList(self, cls: type, where: str = None,
+                   params: Sequence | Mapping[str, Any] | None = None) -> list[Any]:
+        """
+        Getting  list to a selection from a database
+        :param cls: Table type
+        :param where: the string in a query that comes after the FROM word
+        :param params: array of parameters according to psycopg2 specification
+        :return: count of rows affected in the database
+        """
+        try:
+            host: HostItem = _get_attribute(cls)
+            sql = get_sql_select(cls, host)
+            if where is not None:
+                sql += where.strip().strip(';')
+            sql += ';'
+            PrintExecutes(f'selectList:{(sql, params)}')
+            self._cursor.execute(sql, params)
+
+            list_result: list[cls] = []
+            for record in self._cursor:
+                ob = _builder_object_from_type(record, cls, host)
+                list_result.append(ob)
+
+            return list_result
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
@@ -231,18 +253,44 @@ class Session:
         :return: count of rows affected in the database
         """
 
-        try:
 
+        try:
+            PrintExecutes(f'execute:{(sql, params)}')
             self._cursor.execute(sql, params)
-            logging.debug(f'orm:execute.sql:{(sql, params)}')
             for record in self._cursor:
                 yield record
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
+    def executeQuery(self, sql: str | bytes,
+                     params: Sequence | Mapping[str, Any] | None = None) -> list[
+        tuple[Any, ...]]:  # Sequence | Mapping[str, Any] | None = None
+        """
+
+        :param sql: query string
+        :param params: array of parameters according to psycopg2 specification
+        :return: count of rows affected in the database
+        """
+
+        try:
+            PrintExecutes(f'executeNotQuery.sql:{(sql, params)}')
+
+            # self._cursor.connection.cursor_factory=psycopg2.extras.DictCursor
+            self._cursor.execute(sql, params)
+            # for record in self._cursor:
+            #
+            #     yield record
+
+            return self._cursor.fetchall()
+
+        except Exception as exc:
+            logging.error("%s: %s" % (exc.__class__.__name__, exc))
+            raise
+
     def executeNonQuery(self, sql: str | bytes,
-                        params: Sequence | Mapping[str, Any] | None = None) -> int:  # Sequence | Mapping[str, Any] | None = None
+                        params: Sequence | Mapping[
+                            str, Any] | None = None) -> int:  # Sequence | Mapping[str, Any] | None = None
         """
         Execute a query without returning a result
         :param sql: query string
@@ -250,7 +298,7 @@ class Session:
         :return: count of rows affected in the database
         """
         try:
-            logging.debug(f'orm:executeNotQuery.sql:{(sql, params)}')
+            PrintExecutes(f'executeNotQuery.sql:{(sql, params)}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
         except Exception as exc:
@@ -281,7 +329,7 @@ class Session:
                 return 0
             host: HostItem = _get_attribute(type(ob[0]))
             sql = buildInsertBulk(host, *ob)
-            logging.debug(f'orm:insertBulk.sql:{sql}')
+            PrintExecutes(f'insertBulk.sql:{sql}')
             self._cursor.execute(sql[0], sql[1])
             index = 0
             if host.pk_generate_server:
@@ -298,7 +346,7 @@ class Session:
         """Canceling execution of long queries"""
         self._cursor.connection.cancel()
 
-    def getByPrimaryKey(self, cls: type, id_value: any)-> object|None:
+    def getByPrimaryKey(self, cls: type, id_value: any) -> object | None:
         """
         Getting an object of type by primary key value
         :param cls: A type that has descriptions of database attributes
@@ -309,28 +357,28 @@ class Session:
             host: HostItem = _get_attribute(cls)
             sql = get_sql_select(cls, host)
             sql += f'WHERE "{host.pk_column_name}" = %s'
-            logging.debug(f'orm: get.sql:{sql}')
+            PrintExecutes(f' getByPrimaryKey:{sql}, {[id_value]}')
             self._cursor.execute(sql, [id_value])
             ob = None
             for record in self._cursor:
-                index = 0
-                ob = cls()
-                for key, value in host.columns.items():
-                    if value.type.strip() == 'jsonb':
-                        v = get_object_from_json(record[index])
-                        setattr(ob, key, v)
-                    else:
-                        setattr(ob, key, record[index])
-                    index = index + 1
+                ob = _builder_object_from_type(record, cls, host)
+                # index = 0
+                # ob = cls()
+                # for key, value in host.columns.items():
+                #     if value.type.strip() == 'jsonb':
+                #         v = get_object_from_json(record[index])
+                #         setattr(ob, key, v)
+                #     else:
+                #         setattr(ob, key, record[index])
+                #     index = index + 1
             return ob
 
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-
-    def any(self,cls: type, where: str = None,
-               params: Sequence | Mapping[str, Any] | None = None) ->bool:
+    def any(self, cls: type, where: str = None,
+            params: Sequence | Mapping[str, Any] | None = None) -> bool:
         """
         Checks for rows in the database based on the query condition
         :param cls:  A type that has descriptions of database attributes
@@ -344,7 +392,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ');'
-            logging.debug(f'orm: any.sql:{(sql,params)}')
+            PrintExecutes(f' any.sql:{(sql, params)}')
             self._cursor.execute(sql, params)
             for record in self._cursor:
                 [d] = record
@@ -354,8 +402,8 @@ class Session:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def firstOrNull(self,cls: type, where: str = None,
-               params: Sequence | Mapping[str, Any] | None = None) ->object|None:
+    def firstOrNull(self, cls: type, where: str = None,
+                    params: Sequence | Mapping[str, Any] | None = None) -> object | None:
         """
         Gets the object from the first row of the query, if there is no row, returns none.
         :param cls: a type that has descriptions of database attributes
@@ -369,26 +417,27 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ' LIMIT 1;'
-            logging.debug(f'orm: firstOrNull.sql:{(sql, params)}')
+            PrintExecutes(f'firstOrNull.sql:{(sql, params)}')
             self._cursor.execute(sql, params)
             ob = None
             for record in self._cursor:
-                index = 0
-                ob = cls()
-                for key, value in host.columns.items():
-                    if value.type.strip() == 'jsonb':
-                        v = get_object_from_json(record[index])
-                        setattr(ob, key, v)
-                    else:
-                        setattr(ob, key, record[index])
-                    index = index + 1
+                ob = _builder_object_from_type(record, cls, host)
+                # index = 0
+                # ob = cls()
+                # for key, value in host.columns.items():
+                #     if value.type.strip() == 'jsonb':
+                #         v = get_object_from_json(record[index])
+                #         setattr(ob, key, v)
+                #     else:
+                #         setattr(ob, key, record[index])
+                #     index = index + 1
             return ob
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
-    def singleOrException(self,cls: type, where: str = None,
-               params: Sequence | Mapping[str, Any] | None = None) ->object:
+    def singleOrException(self, cls: type, where: str = None,
+                          params: Sequence | Mapping[str, Any] | None = None) -> object:
         """
         Gets an object from a single row according to the request,
         if the row is not found or more than one row is found, an exception is raised
@@ -403,25 +452,25 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ';'
-            logging.debug(f'orm: firstOrNull.sql:{(sql, params)}')
+            PrintExecutes(f'firstOrNull.sql:{(sql, params)}')
             self._cursor.execute(sql, params)
-            ob=None
+            ob = None
             for record in self._cursor:
-                index = 0
+
                 if ob is None:
-                    ob = cls()
+                    ob = _builder_object_from_type(record, cls, host)
                 else:
                     raise Exception("""
                             An error occurred while selecting a single value, the number of rows in the selection is greater than one.
                             """)
-
-                for key, value in host.columns.items():
-                    if value.type.strip() == 'jsonb':
-                        v = get_object_from_json(record[index])
-                        setattr(ob, key, v)
-                    else:
-                        setattr(ob, key, record[index])
-                    index = index + 1
+                # index = 0
+                # for key, value in host.columns.items():
+                #     if value.type.strip() == 'jsonb':
+                #         v = get_object_from_json(record[index])
+                #         setattr(ob, key, v)
+                #     else:
+                #         setattr(ob, key, record[index])
+                #     index = index + 1
 
             if ob is None:
                 raise Exception("""
@@ -435,16 +484,15 @@ class Session:
             raise
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+def _builder_object_from_type(record: tuple[Any, ...], cls: type, host: HostItem):
+    index = 0
+    ob = cls()
+    for key, value in host.columns.items():
+        if value.type.strip() == 'jsonb':
+            from pgorm import get_object_from_json
+            v = get_object_from_json(record[index])
+            setattr(ob, key, v)
+        else:
+            setattr(ob, key, record[index])
+        index = index + 1
+    return ob

@@ -35,7 +35,7 @@ class Transaction:
         else:
             self.connection.commit()
             self.connection.autocommit = True
-            self.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_DEFAULT)
+            self.connection.set_isolation_level(None)
             self.connection = None
 
     def rollback(self):

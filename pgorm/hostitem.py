@@ -23,7 +23,7 @@ class HostItem:
     table_other:str|None=None
     pk_column_name:str|None=None
     pk_property_name:str|None=None
-    pk_generate_server: bool = False # генерация ключа происходит на сервере
+    pk_generate_server: bool = False # key generation occurs on the server
     columns:dict[str,_ColumnData]={}
 class HostAttribute:
     dictHost:dict[str,HostItem]={}

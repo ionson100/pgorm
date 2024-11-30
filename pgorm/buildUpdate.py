@@ -2,7 +2,7 @@ from .hostitem import HostItem
 
 _dictUpdate:dict[type,str]={}
 def _inner_builder(h:HostItem,t:type):
-    sql=f'UPDATE {h.table_name} SET '
+    sql=f'UPDATE "{h.table_name}" SET '
     for key,value in h.columns.items():
         if value.isPk is True:
             continue

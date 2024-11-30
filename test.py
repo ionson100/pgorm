@@ -1,14 +1,16 @@
 
-import logging
 
-from pgorm.orm import OrmConnectionNotPool
+
 from models.classTest221 import Test221
 from pgorm.ormPool import OrmConnectionPool
+from pgorm.logAction import set_print
 
-logging.basicConfig(level=logging.DEBUG)
+
+
 
 OrmConnectionPool.init(type_pool=0, minconn=1, maxconn=10,
                        user='postgres', password='ion100312873', host='localhost', port=5432, database='test')
+set_print(True)
 #
 with OrmConnectionPool.GetConnection()as connect:
    with connect.getSession() as session:

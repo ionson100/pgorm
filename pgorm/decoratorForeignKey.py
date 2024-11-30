@@ -1,12 +1,12 @@
-
+import logging
 from typing import Sequence, Mapping, Any
 
-
-
+from pgorm import get_object_from_json
 from pgorm.hostitem import get_host_base, HostItem
 from pgorm.builderSelect import get_sql_select
+from pgorm.logAction import PrintFree
 from pgorm.orm import OrmConnectionNotPool
-import logging
+from pgorm.session import _builder_object_from_type
 
 
 def getRelatives(cls: type,fk:str, add_where: str = None,
@@ -14,12 +14,11 @@ def getRelatives(cls: type,fk:str, add_where: str = None,
     def decorator(func):
         def wrapper(self):
             try:
-                logging.debug(f"Decorator arguments: {cls}, {fk}, {add_where}, {params}, {type(self)}")
+                #PrintFree(f"ORM DECORATOR: arguments: {cls}, {fk}, {add_where}, {params}, {type(self)}")
                 host: HostItem = get_host_base().get_hist_type(type(self))
                 name_key = host.pk_property_name
                 host_core = get_host_base().get_hist_type(cls)
                 value_key = getattr(self, name_key)
-                r = hasattr(self, value_key)
                 if hasattr(self, value_key):
                     return getattr(self, value_key)
                 else:
@@ -33,23 +32,23 @@ def getRelatives(cls: type,fk:str, add_where: str = None,
                     if params is not None:
                         for param in params:
                             p.append(param)
-                    logging.debug(f'orm:decorator.sql:{(sql, p)}')
+                    PrintFree(f'ORM DECORATOR: sql:{(sql, p)}')
                     with OrmConnectionNotPool().getSession() as session:
                         result_list: list[cls] = []
 
-                        for r in session.execute(sql, tuple(p)):
-                            result_list.append(r)
+                        for record in session.execute(sql, tuple(p)):
+                           o= _builder_object_from_type(record,cls,host)
+                           result_list.append(o)
 
                         setattr(self, value_key, result_list)
 
                     return getattr(self, value_key)
-
-
 
             except Exception as exc:
                 logging.error("%s: %s" % (exc.__class__.__name__, exc))
                 raise
         return wrapper
     return decorator
+
 
 

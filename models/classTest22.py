@@ -1,7 +1,3 @@
-import json
-import uuid
-
-
 class Test22:
     """orm{'name':'test22'}orm"""
     id: int = 0

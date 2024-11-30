@@ -3,7 +3,7 @@ import inspect
 import textwrap
 import re
 from itertools import pairwise
-import logging
+from pgorm.logAction import PrintAttribite
 
 
 class StringBuilder:
@@ -61,7 +61,7 @@ def get_attr_docs(cls: type) -> dict[str, str]:
             st=get_str_doc(doc)
             if st is None:
                 continue
-            logging.debug(f'build attribute-{cls} {target.id}:{st}')
+            PrintAttribite(f'{cls} {target.id}:{st}')
             out[target.id] = st
     return out
 
@@ -93,3 +93,4 @@ def get_attribute_class(cls:type)->str|None:
     if s is None:
         raise TypeError(f"Тип: {cls} не имеет описания как объект для работы с орм")
     return s
+

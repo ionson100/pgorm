@@ -9,10 +9,19 @@ def _portion(h:HostItem, ob:any, p:list[any]):
             continue
         s=s+"%s, "
         if value.type== "jsonb":
-            v = getattr(ob, key)
-            p.append(get_json(v))
+            if hasattr(ob,key):
+                v = getattr(ob, key)
+                p.append(get_json(v))
+            else:
+                p.append(None)
+
+
         else:
-            p.append(getattr(ob,key))
+            if hasattr(ob, key):
+                p.append(getattr(ob,key))
+            else:
+                p.append(None)
+
 
     s=s.strip(' ').strip(',')+'), '
     return s

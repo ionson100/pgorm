@@ -32,11 +32,19 @@ def _inner_build_param(o:any,h:HostItem):
         if value.isPk==True and value.mode_generate_pk_server==True:
             continue
         if value.type== "jsonb":
-            v = getattr(o, key)
-            d.append(get_json(v))
+            if hasattr(o,key):
+                v = getattr(o, key)
+                d.append(get_json(v))
+            else:
+                d.append(None)
         else:
-            v = getattr(o, key)
-            d.append(v)
+            if hasattr(o,key):
+                d.append(getattr(o,key))
+            else:
+                d.append(None)
+            #
+            # v = getattr(o, key)
+            # d.append(v)
 
 
     return d
