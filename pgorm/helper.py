@@ -58,24 +58,24 @@ class MapBuilder:
     def __init__(self,cls:type,table_name:str):
         self.host.table_name=table_name
         self.cls=cls
-    def AppendField(self,*,name_field:str,name_column: str, default: str = 'null', type_column: str = 'TEXT',
-                                  pk: bool = False, mode: bool = False):
+    def AppendField(self, *, name_field:str, name_column: str, default: str = 'null', type_column: str = 'TEXT',
+                    is_pk: bool = False, use_server_generation: bool = False):
 
         column_data = _ColumnData()
         column_data.name_table = name_column
         column_data.type = type_column
         column_data.default = default
-        column_data.isPk = pk
+        column_data.isPk = is_pk
         column_data.name_property = name_field
 
-        column_data.mode_property = mode
-        column_data.mode_generate_pk_server =mode==True
+        column_data.mode_property = use_server_generation
+        column_data.mode_generate_pk_server = use_server_generation == True
         self.host.columns[name_field] = column_data
 
-        if pk:
+        if is_pk:
             self.host.pk_property_name=name_field
             self.host.pk_column_name=name_column
-            self.host.pk_generate_server=mode
+            self.host.pk_generate_server=use_server_generation
         c = get_host_base().dictHost.get(str(self.cls))
         if c is None:
             get_host_base().dictHost[str(self.cls)] = self.host

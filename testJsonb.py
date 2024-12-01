@@ -37,7 +37,8 @@ class TestJson:
 
 
 b=MapBuilder(TestJson,'json')
-b.AppendField(name_field='id',name_column='id',type_column='SERIAL',default='PRIMARY KEY',pk=True,mode=True)
+b.AppendField(name_field='id', name_column='id', type_column='SERIAL', default='PRIMARY KEY', is_pk=True,
+              use_server_generation=True)
 b.AppendField(name_field='array',name_column='array',type_column='integer[]',default='null')
 b.AppendField(name_field='dict',name_column='dict',type_column='jsonb',default='null')
 b.AppendField(name_field='my_date',name_column='my_date',type_column='timestamp')
