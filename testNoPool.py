@@ -7,7 +7,7 @@ from pgorm.orm import OrmConnectionNotPool
 
 #logging.basicConfig(level=logging.DEBUG)
 
-OrmConnectionNotPool.init(password='postgres', host='192.168.70.119', port=5432, user='postgres', dbname='test')
+OrmConnectionNotPool.init(password='postgres', host='localhost', port=5432, user='postgres1', dbname='test')
 
 with OrmConnectionNotPool.getSession() as session:
     with session.beginTransaction() as tx:

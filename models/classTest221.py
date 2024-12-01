@@ -3,6 +3,7 @@ import logging
 
 from models.classForeignKey import ForeignKey
 from models.classJsonTest import JsonTest
+from pgorm import columnName
 from pgorm.decoratorForeignKey import  getRelatives
 from pgorm.session import Session
 
@@ -27,7 +28,7 @@ class Test221:
     def __str__(self):
         return str((self.id, self.name, self.jsonB))
 
-    @getRelatives(ForeignKey,Session.columnName(ForeignKey,"id_test"),
-                  f'and {Session.columnName(ForeignKey,'name')} = %s',['asas'])
+    @getRelatives(ForeignKey,columnName(ForeignKey,"id_test"),
+                  f'and {columnName(ForeignKey,'name')} = %s',['asas'])
     def getForeignObject(self) ->list[ForeignKey]:
        pass

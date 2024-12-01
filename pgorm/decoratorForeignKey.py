@@ -37,7 +37,7 @@ def getRelatives(cls: type,fk:str, add_where: str = None,
                         result_list: list[cls] = []
 
                         for record in session.execute(sql, tuple(p)):
-                           o= _builder_object_from_type(record,cls,host)
+                           o= _builder_object_from_type(record,cls,host_core)
                            result_list.append(o)
 
                         setattr(self, value_key, result_list)

@@ -11,7 +11,7 @@ set_print(True)
 
 
 
-OrmConnectionNotPool.init(password='ion100312873', host='localhost', port=5432, user='postgres', dbname='test')
+OrmConnectionNotPool.init(password='postgres', host='localhost', port=5432, user='postgres1', dbname='test')
 with OrmConnectionNotPool.getSession() as session:
     exist = session.existTable(Test221)
     if exist:
@@ -27,7 +27,7 @@ with OrmConnectionNotPool.getSession() as session:
     else:
         session.createTable(ForeignKey)
     session.truncateTable(Test221)
-    session.tableName(ForeignKey)
+
 
     t = Test221()
     session.insert(t)

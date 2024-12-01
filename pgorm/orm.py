@@ -81,10 +81,21 @@ class OrmConnectionNotPool:
         if _self_host.connect is None:
             logging.error('orm getConnection: connection not created when starting App!', exc_info=True)
         else:
-            return Session(_self_host.connect.cursor(cursor_factory=cursor_factory))
+            return Session(_self_host.connect.cursor(cursor_factory=cursor_factory),False)
 
     @staticmethod
     def connectionClose():
         """ close() -- Close the connection. """
+
         _self_host.connect.close()
         _self_host.connect = None
+
+    @staticmethod
+    def getContext():
+        return ContextNoPool()
+
+class ContextNoPool:
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        OrmConnectionNotPool.connectionClose()

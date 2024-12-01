@@ -21,8 +21,10 @@ def _get_attribute(cls: type):
 
 class Session:
 
-    def __init__(self, cursor: psycopg2.extensions.cursor):
+    is_pool:bool
+    def __init__(self, cursor: psycopg2.extensions.cursor,is_pool:bool):
         self._cursor = cursor
+        self._is_pool = is_pool
 
     def __enter__(self):
         return self
@@ -47,7 +49,7 @@ class Session:
         try:
             ta = _get_attribute(cls).table_name
             sql = f"""SELECT EXISTS  ( SELECT FROM  pg_tables WHERE  schemaname = 'public' AND  tablename  = '{ta}' );"""
-            PrintExecutes(f'exist table.sql:{sql}')
+            PrintExecutes(f'existTable:{sql}')
 
             self._cursor.execute(sql)
             for record in self._cursor:
@@ -82,7 +84,7 @@ class Session:
         try:
 
             sql = f'TRUNCATE TABLE  "{_get_attribute(cls).table_name}";'
-            PrintExecutes(f'truncate table:{sql}')
+            PrintExecutes(f'truncateTable:{sql}')
             self._cursor.execute(sql)
             return self._cursor.rowcount
 
@@ -124,7 +126,7 @@ class Session:
             if where is not None:
                 where = where.strip().strip(';')
             sql = f'DELETE FROM "{_get_attribute(cls).table_name}" {where};'
-            PrintExecutes(f'delete table.sql:{sql} {params}')
+            PrintExecutes(f'delete table:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -143,7 +145,7 @@ class Session:
             if where is not None:
                 where = where.strip().strip(';')
             sql = f'DELETE FROM ONLY "{_get_attribute(cls).table_name}" {where};'
-            PrintExecutes(f'delete only table.sql:{sql} {params}')
+            PrintExecutes(f'delete only table:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -274,7 +276,7 @@ class Session:
         """
 
         try:
-            PrintExecutes(f'executeNotQuery.sql:{(sql, params)}')
+            PrintExecutes(f'executeNotQuery:{(sql, params)}')
 
             # self._cursor.connection.cursor_factory=psycopg2.extras.DictCursor
             self._cursor.execute(sql, params)
@@ -288,6 +290,7 @@ class Session:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
             raise
 
+
     def executeNonQuery(self, sql: str | bytes,
                         params: Sequence | Mapping[
                             str, Any] | None = None) -> int:  # Sequence | Mapping[str, Any] | None = None
@@ -298,7 +301,7 @@ class Session:
         :return: count of rows affected in the database
         """
         try:
-            PrintExecutes(f'executeNotQuery.sql:{(sql, params)}')
+            PrintExecutes(f'executeNotQuery:{(sql, params)}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
         except Exception as exc:
@@ -329,7 +332,7 @@ class Session:
                 return 0
             host: HostItem = _get_attribute(type(ob[0]))
             sql = buildInsertBulk(host, *ob)
-            PrintExecutes(f'insertBulk.sql:{sql}')
+            PrintExecutes(f'insertBulk:{sql}')
             self._cursor.execute(sql[0], sql[1])
             index = 0
             if host.pk_generate_server:
@@ -392,7 +395,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ');'
-            PrintExecutes(f' any.sql:{(sql, params)}')
+            PrintExecutes(f' any:{(sql, params)}')
             self._cursor.execute(sql, params)
             for record in self._cursor:
                 [d] = record
@@ -417,20 +420,12 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ' LIMIT 1;'
-            PrintExecutes(f'firstOrNull.sql:{(sql, params)}')
+            PrintExecutes(f'firstOrNull:{(sql, params)}')
             self._cursor.execute(sql, params)
             ob = None
             for record in self._cursor:
                 ob = _builder_object_from_type(record, cls, host)
-                # index = 0
-                # ob = cls()
-                # for key, value in host.columns.items():
-                #     if value.type.strip() == 'jsonb':
-                #         v = get_object_from_json(record[index])
-                #         setattr(ob, key, v)
-                #     else:
-                #         setattr(ob, key, record[index])
-                #     index = index + 1
+
             return ob
         except Exception as exc:
             logging.error("%s: %s" % (exc.__class__.__name__, exc))
@@ -452,7 +447,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ';'
-            PrintExecutes(f'firstOrNull.sql:{(sql, params)}')
+            PrintExecutes(f'singleOrException:{(sql, params)}')
             self._cursor.execute(sql, params)
             ob = None
             for record in self._cursor:

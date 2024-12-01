@@ -1,10 +1,12 @@
+from dataclasses import dataclass
 from uuid import uuid4
 
 import pgorm
-from pgorm import set_print, Session, tableName, columnName, getSqlForType
+from pgorm import set_print, Session, tableName, columnName, getSqlForType, getTemplateTableAttributesDoc
 from pgorm import OrmConnectionNotPool
+from pgorm import OrmConnectionPool
+from test import connect
 
-OrmConnectionNotPool.init(password='ion100312873', host='localhost', port=5432, user='postgres', dbname='test')
 set_print(True)  # говорит что нужно печатать все запросы в консоль
 
 
@@ -36,7 +38,7 @@ class UserClient(UserBase):
     def __str__(self):
         return f'{self.id} {self.name} {self.age}'
 
-
+@dataclass
 class UserDatabase(UserBase):
     """
     orm{'name':'myUser2'}orm
@@ -55,41 +57,33 @@ class UserDatabase(UserBase):
         return f'{self.id} {self.name} {self.age}'
 
 
-with OrmConnectionNotPool.getSession() as session:
-    with session.beginTransaction() as tx:
-        session.dropTable(UserClient, True)
-        session.createTable(UserClient, True)
-
-        session.dropTable(UserDatabase, True)
-        session.createTable(UserDatabase, True)
-
-        user = UserDatabase()
-        user.name = '<NAME>'
-        session.insert(user)
-
-        print(f"SELECT * FROM {tableName(UserDatabase)} where {columnName(UserDatabase, "age")} =10 ")
-        """ получение названия таблицы м колонки таблицыSELECT * FROM "myUser2" where "age" =10 """
-        print(getSqlForType(UserDatabase))
-        """ получение канонической строки  запроса -SELECT "id", "name", "age" FROM "myUser2" """
-        for r in session.execute(getSqlForType(UserDatabase)):
-            print(r)
-
-        for r in session.execute(f' {getSqlForType(UserDatabase)}  where {columnName(UserDatabase, "age")} =%s;', [10]):
-            print(r)
-
-        """
-        execute возвращает генератор кортежей строк запроса.
-        ORM SESSION: execute:('SELECT "id", "name", "age" FROM "myUser2" ', None)
-        ORM SESSION: execute:(' SELECT "id", "name", "age" FROM "myUser2"   where "age" =%s;', [10]) 
-        """
+OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='localhost', port=5432, user='postgres1', database='test',)
+with OrmConnectionPool.getContext() as ctx:
+    with OrmConnectionPool.getConnection() as connection:
+        with connection.getSession() as session:
+            with session.beginTransaction() as tx:
+                session.dropTable(UserDatabase, True)
+                session.createTable(UserDatabase, True)
+                session.truncateTable(UserDatabase)
 
 
-        # li=[]
-        # for  i in range(2):
-        #     user = UserClient()
-        #     user.name = 'name-'+str(i)
-        #     #user.age=10
-        #     li.append(user)
-        # session.insertBulk(li)
-        # for u in session.select(UserClient):
-        #     print(u)
+
+# в ручном режиме
+OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='localhost', port=5432, user='postgres1', database='test',)
+connect=OrmConnectionPool.getConnection()
+session=connect.getSession()
+try:
+    session.dropTable(UserDatabase, True)
+except Exception as e:
+    print(e)
+    raise
+finally:
+    session.close()
+    connect.close()
+    OrmConnectionPool.ClosePool()
+print(getTemplateTableAttributesDoc(name="my_name",type_column="TEXT",default=" null",pk=False,mode=False))
+"""
+orm{'name': 'my_name', 'type': 'TEXT', 'default': ' null', 'pk': False, 'mode': False}orm
+"""
+
+

@@ -20,7 +20,7 @@ def getTemplateTableAttributesDoc(*, name: str, default: str = 'null', type_colu
     :param pk: is it a primary key
     :return: a string that can be inserted into the description of a type property
     """
-    dec: dict[str, any] = {'name': name, 'type': type_column, 'default': default, 'pk': pk, 'mode': mode}
+    dec: dict[str, any] = {'name':name, 'type':type_column, 'default':default, 'pk':pk, 'mode':mode}
     return 'orm' + str(dec) + 'orm'
 
 
