@@ -1,6 +1,9 @@
 import logging
 
+from psycopg2._psycopg import Column
+
 from pgorm import get_host_base, HostItem, get_sql_select
+from pgorm.hostitem import _ColumnData
 from pgorm.session import _get_attribute
 
 
@@ -48,3 +51,38 @@ def columnName(cls: type, field_name: str) -> str:
     logging.error(
         f'The name of the column associated with the field {field_name}, in the table : {cls} is missing',
         exc_info=True)
+class MapBuilder:
+    doc_string: str
+    cls:type
+    host: HostItem=HostItem()
+    def __init__(self,cls:type,table_name:str):
+        self.host.table_name=table_name
+        self.cls=cls
+    def AppendField(self,*,name_field:str,name_column: str, default: str = 'null', type_column: str = 'TEXT',
+                                  pk: bool = False, mode: bool = False):
+
+        column_data = _ColumnData()
+        column_data.name_table = name_column
+        column_data.type = type_column
+        column_data.default = default
+        column_data.isPk = pk
+        column_data.name_property = name_field
+
+        column_data.mode_property = mode
+        column_data.mode_generate_pk_server =mode==True
+        self.host.columns[name_field] = column_data
+
+        if pk:
+            self.host.pk_property_name=name_field
+            self.host.pk_column_name=name_column
+            self.host.pk_generate_server=mode
+        c = get_host_base().dictHost.get(str(self.cls))
+        if c is None:
+            get_host_base().dictHost[str(self.cls)] = self.host
+        return self
+    def checkHost(self)->HostItem:
+        if self.host.pk_column_name is None:
+            raise Exception('PK is missing')
+        if self.host.table_name is None:
+            raise Exception('Table name is missing')
+        return self.host

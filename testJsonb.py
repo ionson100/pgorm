@@ -2,7 +2,8 @@ import datetime
 import json
 
 
-from pgorm import OrmConnectionPool, set_print
+from pgorm import OrmConnectionPool, set_print, MapBuilder
+
 set_print(True)
 
 class Inner:
@@ -13,28 +14,35 @@ class Inner:
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__)
 class TestJson:
-    """orm{'name':'json'}orm"""
+    # """orm{'name':'json'}orm"""
     id: int
-    """
-    первичный ключ генерим на клиенте
-    orm{'name': 'id','type': 'SERIAL','default': "PRIMARY KEY",'pk': True,'mode':True}orm
-     """
+    # """
+    # первичный ключ генерим на клиенте
+    # orm{'name': 'id','type': 'SERIAL','default': "PRIMARY KEY",'pk': True,'mode':True}orm
+    #  """
     array=[1,2,3,4]
-    """orm{'name': 'array','type': 'integer[]','default': "null"}orm"""
+    # """orm{'name': 'array','type': 'integer[]','default': "null"}orm"""
 
 
     dict={'name':'name','age':34}
-    """orm{'name': 'dict','type': 'jsonb','default': "null"}orm"""
+    # """orm{'name': 'dict','type': 'jsonb','default': "null"}orm"""
 
     inner=Inner()
-    """orm{'name': 'inner','type': 'jsonb','default': "null"}orm"""
+    # """orm{'name': 'inner','type': 'jsonb','default': "null"}orm"""
 
     my_date=datetime.date.today()
-    """orm{'name': 'date','type': 'timestamp','default': "null"}orm"""
+    # """orm{'name': 'date','type': 'timestamp','default': "null"}orm"""
     def __str__(self):
        return f'id-{self.id}, array-{self.array}, dict-{self.dict}, my_date-{self.my_date}, inner-{self.inner}'
 
 
+b=MapBuilder(TestJson,'json')
+b.AppendField(name_field='id',name_column='id',type_column='SERIAL',default='PRIMARY KEY',pk=True,mode=True)
+b.AppendField(name_field='array',name_column='array',type_column='integer[]',default='null')
+b.AppendField(name_field='dict',name_column='dict',type_column='jsonb',default='null')
+b.AppendField(name_field='my_date',name_column='my_date',type_column='timestamp')
+b.AppendField(name_field='inner',name_column='inner',type_column='jsonb',default='null')
+b.checkHost()
 
 OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='localhost', port=5432, user='postgres1', database='test',)
 with OrmConnectionPool.getContext() as ctx:
