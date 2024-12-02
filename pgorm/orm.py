@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-
 import psycopg2
 import psycopg2.pool
 from .session import Session

@@ -1,7 +1,6 @@
 import logging
 from typing import Sequence, Mapping, Any
 
-from pgorm import get_object_from_json
 from pgorm.hostitem import get_host_base, HostItem
 from pgorm.builderSelect import get_sql_select
 from pgorm.logAction import PrintFree

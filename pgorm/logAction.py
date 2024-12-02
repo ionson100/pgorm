@@ -1,27 +1,6 @@
 import os
 
-
-
-
-class _print_settings:
-    _print: bool
-
-    def __init__(self, use_print=False):
-        self._print = use_print
-
-    @property
-    def print(self):
-        return self._print
-
-
-_host_print_settings: _print_settings = _print_settings(False)
-
-
-def set_print(use_print: bool):
-    _host_print_settings._print = use_print
-
-
-class bcolors:
+class ColorPrint:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -42,34 +21,51 @@ class bcolors:
     RESET = '\033[0m'
 
 
+class PrintSettings:
+    PRINT: bool
+    CLOR:str
+    FILE:str
+
+    def __init__(self, use_print=False):
+        self.PRINT = use_print
+        self.CLOR=ColorPrint.GREEN
+        self.FILE=None
+
+
+
+
+host_print_settings: PrintSettings = PrintSettings(False)
+
+
+def set_print(use_print: bool, color:str=ColorPrint.GREEN,file:str=None):
+    host_print_settings.CLOR=color
+    host_print_settings.PRINT = use_print
+    host_print_settings.FILE=file
+
+
+
+
+
 os.system("")
 
 
-def PrintExecutes(*msg: str):
-    if _host_print_settings.print is False:
-        return
-    s = 'ORM SESSION: '
-    for i in msg:
-        s += str(i).strip() + ' '
 
-    print(bcolors.OKGREEN + f'{s}' + '\x1b[0m')
-
-
-def PrintAttribite(*msg):
-    if _host_print_settings._print is False:
-        return
-    s = 'ORM BUILD ATTRIBUTE: '
-    for i in msg:
-        s += str(i).strip() + ' '
-
-    print(bcolors.OKGREEN + f'{s}' + '\x1b[0m')
 
 
 def PrintFree(*msg):
-    if _host_print_settings._print == False:
-        return
-    s = ''
-    for i in msg:
-        s += str(i).strip() + ' '
+    if host_print_settings.PRINT:
+        s = ''
+        for i in msg:
+            s += str(i).strip() + ' '
+        if host_print_settings.FILE is not None:
+            with open(host_print_settings.FILE, 'a') as f:
+                print(s, file=f)
+        else:
+            print(host_print_settings.CLOR + f'{s}' + '\x1b[0m')
 
-    print(bcolors.OKGREEN + f'{s}' + '\x1b[0m')
+
+
+
+
+
+

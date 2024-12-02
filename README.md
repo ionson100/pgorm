@@ -64,116 +64,105 @@ finally:
 В питоне нет привычных атрибутов как в шарпе и джаве, что бы пометить свойство и на основе этого сделать\
 маппинг на талицу базы данных.\
 Да и само определение свойства многословно, что бы использовать декораторы\
-Решил попробовать через строку документа поля и типа (описание)\
+Решил через глобальный словарь, где в качестве ключа выступает тип, а значением атрибуты маппинга
 И так пример: будем работать в двумя таблицами\
 ```pycon
+from pgorm import OrmConnectionPool, ColorPrint
+from pgorm import set_print, MapBuilder
+
+set_print(True,ColorPrint.BLUE)  # говорит что нужно печатать все запросы в консоль
 class User:
-    """
-    orm{'name':'myUser'}orm
-    таблица пользователей
-    """
     id: str
-    """
-    первичный ключ uuid as string
-    orm{'name': 'id','type': 'uuid','default': "PRIMARY KEY' ",'pk': True,'mode':False}orm
-     """
-
     name: str=''
-    """orm{'name': 'name', 'type': 'text', 'default': 'DEFAULT NULL'}orm"""
-
     age: int=10
-    """
-    возраст пользователя
-    orm{'name': 'age', 'type': 'integer', 'default': 'DEFAULT 10'}orm
-    """
-
-    def __init__(self, name):
+    def __init__(self, name='simple name'):
         self.id = str(uuid4())
         self.name = name
 
     def __str__(self):
         return f'{self.__class__.__name__}({self.name})'
+
+b = MapBuilder(User, "user_core")
+b.AppendField(name_field="id", name_column="id", type_column='uuid', default='PRIMARY KEY', is_pk=True,
+                  use_server_generation=False)
+b.AppendField(name_field="name", name_column="name", type_column='TEXT', default='NULL')
+b.AppendField(name_field="age", name_column="age", type_column='integer', default='DEFAULT 0')
+b.ValidateMap()
+"""
+ORM MAP BUILD: <class '__main__.User'>  
+  table_name:         user_core
+  pk_column_name:     id
+  pk_generate_server: False
+  pk_field_name:      id
+  columns:            
+      id: {"field_name":"id", "column_mame":"id", "type_column":"uuid", default:"PRIMARY KEY",  "is_pk":True, "use_server_generation":False}
+      name: {"field_name":"name", "column_mame":"name", "type_column":"TEXT", default:"NULL",  "is_pk":False, "use_server_generation":False}
+      age: {"field_name":"age", "column_mame":"age", "type_column":"integer", default:"DEFAULT 0",  "is_pk":False, "use_server_generation":False}  
+"""
 ```
-Вот тип, который проецируется в таблицу с названием: myUser\
-три колонки, строка запроса на создание:\
-
-
-
-```sql
-CREATE TABLE IF NOT EXISTS  "myUser" (
-    "id" uuid  DEFAULT PRIMARY KEY ,
-   "name" text DEFAULT 10,
-   "age" integer null
-);
+Генерация связи происходит через тип MapBuilder где в конструкторе мы передаем тип\
+и название таблицы к этому типу.\
+Тип должен иметь конструктор без обязательных параметров.\
+Потом добавляем поля которые мы желаем связать с таблицей.\
+Желательно поле первичного ключа ставить первым.\
+Значение параметров в общем то понятны. Параметр use_server_generation отвечает за кто отвечает за\
+уникальность ключа, сервер или пользователь, в зависимости от этого будет собираться запрос\
+на вставку в базу данных.\
+Тип колонки и значение по умолчанию, нужно заполнять исходя специфики базы данных Postgres.\
+Желательно в конце вызвать ValidateMap, он проверяет за правильностью формирования связей:\
+Наличие одного первичного ключа, дублирование названий колонок в таблице, вывод связей на консоль.\
+####  О выводе в консоль
+По умолчанию вывод в консоль запросов отключен. Что бы его включить нужно произвести вызов:
+```pycon
+set_print(True) "садатовый цвет"
+set_print(True,ColorPrint.BLUE) "Зеленый цвет, цвет можно выбирать из  ColorPrint" 
+set_print(True,ColorPrint.BLUE,'./log_orm.txt') 
+"""перенаправление вывода в файл, строит использовать для отладки, 
+   медленный процесс, при каждой записи открывается файл""" 
 ```
-обратите внимание на ключь mode в описании первичного ключа.\
-False - это означает что мы генерим уникальность на клиенте, а не в базе,
-True - база данных сама генерит уникальный ключ\
 
-для облегчения создания строки описания можно применить функцию:
-```python
-
-  print(getTemplateTableAttributesDoc(name="my_name",type_column="TEXT",default=" null",pk=False,mode=False))
-  """
-  orm{'name': 'my_name', 'type': 'TEXT', 'default': ' null', 'pk': False, 'mode': False}orm
-  """
-```
 Давайте наследуемся и создадим две таблицы, с одинаковой структурой, но с разным типом генерации первичного ключа.
 
 ```python
 from uuid import uuid4
-from pgorm import set_print
-from pgorm import OrmConnectionNotPool
+from pgorm import OrmConnectionPool,OrmConnectionNotPool, ColorPrint
+from pgorm import set_print, MapBuilder
 
 
-set_print(True)  # говорит что нужно печатать все запросы в консоль
+set_print(True,ColorPrint.GREEN)  # говорит что нужно печатать все запросы в консоль
 
 
 class UserBase:
     name: str = ''
-    """orm{'name': 'name', 'type': 'text', 'default': 'DEFAULT NULL'}orm"""
-
     age: int = 10
-    """
-    возраст пользователя
-    orm{'name': 'age', 'type': 'integer', 'default': 'DEFAULT 10'}orm
-    """
-
 
 class UserClient(UserBase):
-    """
-    orm{'name':'myUser1'}orm
-    таблица пользователей
-    """
     id: str
-    """
-    первичный ключ генерим на клиенте
-    orm{'name': 'id','type': 'uuid PRIMARY KEY','default': "DEFAULT '00000000-0000-0000-0000-000000000000' ",'pk': True,'mode':False}orm
-     """
-
     def __init__(self):
-        self.id = str(uuid4())
-
+        self.id=str(uuid4())
     def __str__(self):
         return f'{self.id} {self.name} {self.age}'
 
 
 class UserDatabase(UserBase):
-    """
-    orm{'name':'myUser2'}orm
-    таблица пользователей
-    """
     id: int
-    """
-    первичный ключ генерим в базе данных
-    orm{'name': 'id','type': 'SERIAL','default': "PRIMARY KEY",'pk': True,'mode':True}orm
-     """
-
-    def __init__(self):
-        pass
+    def __init__(self, name: str = 'user'):
+        self.name = name
 
     def __str__(self):
         return f'{self.id} {self.name} {self.age}'
+
+b=MapBuilder(UserDatabase,'myUser2')
+b.AppendField(name_field="id",name_column="id",type_column='SERIAL',default='PRIMARY KEY',is_pk=True,use_server_generation=True)
+b.AppendField(name_field="name",name_column="name",type_column='TEXT',default='NULL')
+b.AppendField(name_field="age",name_column="age",type_column='integer',default='DEFAULT 0')
+s=b.ValidateMap()
+
+b=MapBuilder(UserClient,'myUser1')
+b.AppendField(name_field="id",name_column="id",type_column='uuid',default='PRIMARY KEY',is_pk=True,use_server_generation=False)
+b.AppendField(name_field="name",name_column="name",type_column='TEXT',default='NULL')
+b.AppendField(name_field="age",name_column="age",type_column='integer',default='DEFAULT 0')
+b.ValidateMap()
 # РАБОТА С ПУЛОМ
 #OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='localhost', port=5432, user='postgres', database='test',)
 # with OrmConnectionPool.getContext() as ctx:
@@ -506,9 +495,6 @@ c примитивными типами родной конвертор спра
 все модели должны иметь один первичный ключ \
 при инициализации модели конструктор не должен иметь обязательных параметров\
 декоратор dataclass уместен. \
-для вывода запросов в консоль:
-```python
-set_print(True) 
-```
+
 
 

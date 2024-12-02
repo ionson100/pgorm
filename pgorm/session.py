@@ -1,18 +1,16 @@
-from collections.abc import Iterator
-from operator import index
-from typing import Sequence, Mapping, Any, NoReturn
-import psycopg2
 import logging
+from collections.abc import Iterator
+from typing import Sequence, Mapping, Any
+import psycopg2.extras
 from pgorm.biulderInsert import get_sql_insert
 from pgorm.buildUpdate import get_sql_update
 from pgorm.builderSelect import get_sql_select
 from pgorm.builderTable import _create_table
 from pgorm.hostitem import get_host_base, HostItem
-from pgorm.jsonWorker import get_object_from_json
-from pgorm.transaction import Transaction
 from pgorm.insertBulk import buildInsertBulk
-from pgorm.logAction import PrintExecutes
-import psycopg2.extras
+from pgorm.jsonWorker import get_object_from_json
+from pgorm.logAction import PrintFree
+from pgorm.transaction import Transaction
 
 
 def _get_attribute(cls: type):
@@ -49,7 +47,7 @@ class Session:
         try:
             ta = _get_attribute(cls).table_name
             sql = f"""SELECT EXISTS  ( SELECT FROM  pg_tables WHERE  schemaname = 'public' AND  tablename  = '{ta}' );"""
-            PrintExecutes(f'existTable:{sql}')
+            PrintFree(f'ORM SESSION: existTable:{sql}')
 
             self._cursor.execute(sql)
             for record in self._cursor:
@@ -67,7 +65,7 @@ class Session:
         """
         try:
             sql = _create_table(_get_attribute(cls), add_exist)
-            PrintExecutes(f'createTable :\n{sql}')
+            PrintFree(f'ORM SESSION: createTable :\n{sql}')
             self._cursor.execute(sql)
 
         except Exception as exc:
@@ -84,7 +82,7 @@ class Session:
         try:
 
             sql = f'TRUNCATE TABLE  "{_get_attribute(cls).table_name}";'
-            PrintExecutes(f'truncateTable:{sql}')
+            PrintFree(f'ORM SESSION: truncateTable:{sql}')
             self._cursor.execute(sql)
             return self._cursor.rowcount
 
@@ -104,7 +102,7 @@ class Session:
             if add_exist:
                 append = 'IF EXISTS'
             sql = f'DROP TABLE {append} "{_get_attribute(cls).table_name}";'
-            PrintExecutes(f'drop table:{sql}')
+            PrintFree(f'ORM SESSION: drop table:{sql}')
 
             self._cursor.execute(sql)
             return self._cursor.rowcount
@@ -126,7 +124,7 @@ class Session:
             if where is not None:
                 where = where.strip().strip(';')
             sql = f'DELETE FROM "{_get_attribute(cls).table_name}" {where};'
-            PrintExecutes(f'delete table:{sql} {params}')
+            PrintFree(f'ORM SESSION: delete table:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -145,7 +143,7 @@ class Session:
             if where is not None:
                 where = where.strip().strip(';')
             sql = f'DELETE FROM ONLY "{_get_attribute(cls).table_name}" {where};'
-            PrintExecutes(f'delete only table:{sql} {params}')
+            PrintFree(f'ORM SESSION: delete only table:{sql} {params}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
 
@@ -163,7 +161,7 @@ class Session:
         try:
             host: HostItem = _get_attribute(type(ob))
             sql: tuple[any, None] = get_sql_insert(ob, host)
-            PrintExecutes(f'insert:{sql}')
+            PrintFree(f'ORM SESSION: insert:{sql}')
             self._cursor.execute(sql[0], sql[1])
 
             if host.pk_generate_server:
@@ -185,7 +183,7 @@ class Session:
         try:
             host: HostItem = _get_attribute(type(ob))
             sql: tuple[any, None] = get_sql_update(ob, host)
-            PrintExecutes(f'update:{sql}')
+            PrintFree(f'ORM SESSION: update:{sql}')
             self._cursor.execute(sql[0], sql[1])
             return self._cursor.rowcount
 
@@ -208,7 +206,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ';'
-            PrintExecutes(f'select:{(sql, params)}')
+            PrintFree(f'ORM SESSION: select:{(sql, params)}')
             self._cursor.execute(sql, params)
 
             for record in self._cursor:
@@ -233,7 +231,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ';'
-            PrintExecutes(f'selectList:{(sql, params)}')
+            PrintFree(f'ORM SESSION: selectList:{(sql, params)}')
             self._cursor.execute(sql, params)
 
             list_result: list[cls] = []
@@ -257,7 +255,7 @@ class Session:
 
 
         try:
-            PrintExecutes(f'execute:{(sql, params)}')
+            PrintFree(f'ORM SESSION: execute:{(sql, params)}')
             self._cursor.execute(sql, params)
             for record in self._cursor:
                 yield record
@@ -276,7 +274,7 @@ class Session:
         """
 
         try:
-            PrintExecutes(f'executeNotQuery:{(sql, params)}')
+            PrintFree(f'ORM SESSION: executeNotQuery:{(sql, params)}')
 
             # self._cursor.connection.cursor_factory=psycopg2.extras.DictCursor
             self._cursor.execute(sql, params)
@@ -301,7 +299,7 @@ class Session:
         :return: count of rows affected in the database
         """
         try:
-            PrintExecutes(f'executeNotQuery:{(sql, params)}')
+            PrintFree(f'ORM SESSION: executeNotQuery:{(sql, params)}')
             self._cursor.execute(sql, params)
             return self._cursor.rowcount
         except Exception as exc:
@@ -332,7 +330,7 @@ class Session:
                 return 0
             host: HostItem = _get_attribute(type(ob[0]))
             sql = buildInsertBulk(host, *ob)
-            PrintExecutes(f'insertBulk:{sql}')
+            PrintFree(f'ORM SESSION: insertBulk:{sql}')
             self._cursor.execute(sql[0], sql[1])
             index = 0
             if host.pk_generate_server:
@@ -360,7 +358,7 @@ class Session:
             host: HostItem = _get_attribute(cls)
             sql = get_sql_select(cls, host)
             sql += f'WHERE "{host.pk_column_name}" = %s'
-            PrintExecutes(f' getByPrimaryKey:{sql}, {[id_value]}')
+            PrintFree(f'ORM SESSION:  getByPrimaryKey:{sql}, {[id_value]}')
             self._cursor.execute(sql, [id_value])
             ob = None
             for record in self._cursor:
@@ -395,7 +393,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ');'
-            PrintExecutes(f' any:{(sql, params)}')
+            PrintFree(f'ORM SESSION:  any:{(sql, params)}')
             self._cursor.execute(sql, params)
             for record in self._cursor:
                 [d] = record
@@ -420,7 +418,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ' LIMIT 1;'
-            PrintExecutes(f'firstOrNull:{(sql, params)}')
+            PrintFree(f'ORM SESSION: firstOrNull:{(sql, params)}')
             self._cursor.execute(sql, params)
             ob = None
             for record in self._cursor:
@@ -447,7 +445,7 @@ class Session:
             if where is not None:
                 sql += where.strip().strip(';')
             sql += ';'
-            PrintExecutes(f'singleOrException:{(sql, params)}')
+            PrintFree(f'ORM SESSION: singleOrException:{(sql, params)}')
             self._cursor.execute(sql, params)
             ob = None
             for record in self._cursor:
@@ -484,7 +482,7 @@ def _builder_object_from_type(record: tuple[Any, ...], cls: type, host: HostItem
     ob = cls()
     for key, value in host.columns.items():
         if value.type.strip() == 'jsonb':
-            from pgorm import get_object_from_json
+
             v = get_object_from_json(record[index])
             setattr(ob, key, v)
         else:

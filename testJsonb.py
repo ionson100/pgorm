@@ -14,24 +14,11 @@ class Inner:
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__)
 class TestJson:
-    # """orm{'name':'json'}orm"""
     id: int
-    # """
-    # первичный ключ генерим на клиенте
-    # orm{'name': 'id','type': 'SERIAL','default': "PRIMARY KEY",'pk': True,'mode':True}orm
-    #  """
     array=[1,2,3,4]
-    # """orm{'name': 'array','type': 'integer[]','default': "null"}orm"""
-
-
     dict={'name':'name','age':34}
-    # """orm{'name': 'dict','type': 'jsonb','default': "null"}orm"""
-
     inner=Inner()
-    # """orm{'name': 'inner','type': 'jsonb','default': "null"}orm"""
-
     my_date=datetime.date.today()
-    # """orm{'name': 'date','type': 'timestamp','default': "null"}orm"""
     def __str__(self):
        return f'id-{self.id}, array-{self.array}, dict-{self.dict}, my_date-{self.my_date}, inner-{self.inner}'
 
@@ -43,9 +30,9 @@ b.AppendField(name_field='array',name_column='array',type_column='integer[]',def
 b.AppendField(name_field='dict',name_column='dict',type_column='jsonb',default='null')
 b.AppendField(name_field='my_date',name_column='my_date',type_column='timestamp')
 b.AppendField(name_field='inner',name_column='inner',type_column='jsonb',default='null')
-b.checkHost()
+b.ValidateMap()
 
-OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='localhost', port=5432, user='postgres1', database='test',)
+OrmConnectionPool.init(type_pool=0,minconn=1,maxconn=10,password='postgres', host='192.168.70.119', port=5432, user='postgres', database='test',)
 with OrmConnectionPool.getContext() as ctx:
     with OrmConnectionPool.getConnection() as connection:
         with connection.getSession() as session:
